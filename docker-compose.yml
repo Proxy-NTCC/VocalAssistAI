@@ -9,6 +9,7 @@ services:
       N8N_PROTOCOL: http
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/files/workflows:ro
