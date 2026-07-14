@@ -1,0 +1,88 @@
+{
+  "id": "ticket-topic-classification",
+  "name": "Ticket Topic Classification",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f807f522-8f7f-4c79-a065-a8d5725e2230",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "763b7292-5e9f-462c-b069-43bd439c1811",
+              "name": "ticketText",
+              "value": "मेरा payment कट गया लेकिन order confirm नहीं हुआ।",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a28e481d-1f0c-4a32-a66c-b3c5ba5f5eb3",
+      "name": "Set Ticket Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [ { parts: [ { text: 'You are a retail customer-support ticket classifier. Classify the ticket into exactly one label: Billing & Payment, Product Issue, Delivery & Shipping, Order Management, Account & Login, Store & Service, Other. The ticket can be English, Hindi, Hinglish, or another Indian language. Choose the main issue. If it is unclear, unsupported, mixed, or unrelated, use Other. Return only JSON with topic, confidence from 0 to 1, and a short reason. Ticket: ' + $json.ticketText } ] } ], generationConfig: { responseMimeType: 'application/json', temperature: 0 } } }}",
+        "options": {}
+      },
+      "id": "e1c82e70-94a9-4a63-bd7e-b9f31a5c3a2b",
+      "name": "Gemini Topic Classifier",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allowedTopics = [\n  'Billing & Payment',\n  'Product Issue',\n  'Delivery & Shipping',\n  'Order Management',\n  'Account & Login',\n  'Store & Service',\n  'Other',\n];\n\nconst responseText = $json.candidates?.[0]?.content?.parts\n  ?.map((part) => part.text || '')\n  .join('') || '';\n\nlet result;\ntry {\n  result = JSON.parse(responseText);\n} catch {\n  result = {\n    topic: 'Other',\n    confidence: 0,\n    reason: 'The model response was not valid JSON.',\n  };\n}\n\nif (!allowedTopics.includes(result.topic)) {\n  result.topic = 'Other';\n}\n\nreturn [{\n  json: {\n    ticketText: $items('Set Ticket Text')[0].json.ticketText,\n    topic: result.topic,\n    confidence: Number(result.confidence) || 0,\n    reason: result.reason || '',\n  },\n}];"
+      },
+      "id": "ec87659c-6837-4a27-bc69-07dd8993f74e",
+      "name": "Parse Topic Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Set Ticket Text", "type": "main", "index": 0 }]]
+    },
+    "Set Ticket Text": {
+      "main": [[{ "node": "Gemini Topic Classifier", "type": "main", "index": 0 }]]
+    },
+    "Gemini Topic Classifier": {
+      "main": [[{ "node": "Parse Topic Output", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "d7b0d9c1-a9e6-4b35-80c6-5f355e066a1b",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
