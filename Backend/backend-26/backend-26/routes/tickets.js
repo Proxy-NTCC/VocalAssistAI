@@ -10,6 +10,8 @@ router.post('/', async (req, res) => {
     const savedTicket = await newTicket.save();
     res.status(201).json(savedTicket);
   } catch (err) {
+    const ticketId = req.body._id || req.body.originalId || 'new';
+    console.error(`[Backend Ticket Ingestion Error] Failed to ingest ticket. Ticket ID: "${ticketId}". Step: Ingestion. Error: ${err.message}`);
     res.status(400).json({ message: err.message });
   }
 });
@@ -64,6 +66,7 @@ router.put('/:id', async (req, res) => {
     }
     res.json(updatedTicket);
   } catch (err) {
+    console.error(`[Backend Ticket Update Error] Failed to update ticket. Ticket ID: "${req.params.id}". Step: Update. Error: ${err.message}`);
     res.status(400).json({ message: err.message });
   }
 });
@@ -132,14 +135,14 @@ const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
           console.log(`Successfully logged feedback in Airtable table "${tableName}".`);
           resolve(true);
         } else {
-          console.warn(`Airtable feedback sync returned status ${res.statusCode}: ${data}`);
+          console.error(`[Backend Airtable Sync Error] Airtable feedback sync returned error status. Ticket ID: "${ticket._id}". Step: Airtable Sync. Error: HTTP Status ${res.statusCode}. Response: ${data}`);
           resolve(false);
         }
       });
     });
 
     req.on('error', (e) => {
-      console.warn(`Network error syncing feedback to Airtable: ${e.message}`);
+      console.error(`[Backend Airtable Sync Error] Network error syncing feedback to Airtable. Ticket ID: "${ticket._id}". Step: Airtable Sync. Error: ${e.message}`);
       resolve(false);
     });
 
@@ -200,10 +203,11 @@ router.post('/:id/feedback', async (req, res) => {
       baseId: airtableBaseId,
       pat: airtablePat,
       tableName: 'Feedback'
-    }).catch(err => console.error('Airtable sync error:', err));
+    }).catch(err => console.error(`[Backend Airtable Sync Error] Failed to sync feedback to Airtable for ticket ${req.params.id}:`, err));
 
     res.json(savedTicket);
   } catch (err) {
+    console.error(`[Backend Feedback Error] Failed to log feedback. Ticket ID: "${req.params.id}". Step: Submit Feedback. Error: ${err.message}`);
     res.status(400).json({ message: err.message });
   }
 });

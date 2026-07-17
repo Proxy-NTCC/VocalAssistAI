@@ -70,10 +70,17 @@ export class LocationExtractor implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			let ticketText = '';
+			let ticketId = 'unknown';
 			try {
+				const inputJson = items[i].json;
+				if (inputJson) {
+					ticketId = inputJson.id || inputJson._id || inputJson.ticketId || inputJson.originalId || 'unknown';
+				}
+
 				let apiKey = this.getNodeParameter('apiKey', i) as string;
 				const model = this.getNodeParameter('model', i) as string;
-				const ticketText = this.getNodeParameter('ticketText', i) as string;
+				ticketText = this.getNodeParameter('ticketText', i) as string;
 
 				if (!apiKey || apiKey.startsWith('={{') || apiKey.trim() === '') {
 					apiKey = process.env.OPENAI_API_KEY || '';
@@ -97,6 +104,7 @@ export class LocationExtractor implements INodeType {
 				const result = await this.callOpenAI(apiKey, model, ticketText);
 				returnData.push({ json: result });
 			} catch (error: any) {
+				console.error(`[LocationExtractor Error] Failed during execution step. Step: Location Extraction. Ticket ID: "${ticketId}". Ticket text: "${ticketText ? ticketText.substring(0, 100) : 'unknown'}...". Error: ${error.message || error}`);
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
@@ -181,7 +189,14 @@ Examples:
 					if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
 						try {
 							const parsedResponse = JSON.parse(data);
-							const content = parsedResponse.choices[0].message.content.trim();
+							if (!parsedResponse.choices || parsedResponse.choices.length === 0) {
+								throw new Error('No choices returned in OpenAI response');
+							}
+							const firstChoice = parsedResponse.choices[0];
+							if (!firstChoice.message || firstChoice.message.content === undefined) {
+								throw new Error('No message or content returned in OpenAI choice');
+							}
+							const content = firstChoice.message.content.trim();
 							
 							// Strip out any potential markdown code blocks if the model failed to follow constraint 5
 							let cleanContent = content;

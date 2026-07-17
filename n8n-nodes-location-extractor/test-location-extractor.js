@@ -5,7 +5,14 @@ const EventEmitter = require('events');
 function cleanAndParseResponse(data) {
 	try {
 		const parsedResponse = JSON.parse(data);
-		const content = parsedResponse.choices[0].message.content.trim();
+		if (!parsedResponse.choices || parsedResponse.choices.length === 0) {
+			throw new Error('No choices returned in OpenAI response');
+		}
+		const firstChoice = parsedResponse.choices[0];
+		if (!firstChoice.message || firstChoice.message.content === undefined) {
+			throw new Error('No message or content returned in OpenAI choice');
+		}
+		const content = firstChoice.message.content.trim();
 		
 		let cleanContent = content;
 		if (cleanContent.startsWith('```')) {
@@ -88,13 +95,73 @@ const tests = [
 			]
 		},
 		expectError: true
+	},
+	{
+		name: "Empty choices returned in OpenAI response",
+		mockApiResponse: {
+			choices: []
+		},
+		expectError: true
+	},
+	{
+		name: "No message or content returned in OpenAI choice",
+		mockApiResponse: {
+			choices: [
+				{
+					message: {}
+				}
+			]
+		},
+		expectError: true
 	}
 ];
 
-function runTests() {
+const apiFailureTests = [
+	{
+		name: "Simulated OpenAI API Rate Limit Error (HTTP 429)",
+		statusCode: 429,
+		responseData: "Rate limit exceeded",
+		expectError: true
+	},
+	{
+		name: "Simulated OpenAI Internal Server Error (HTTP 500)",
+		statusCode: 500,
+		responseData: "Internal Server Error",
+		expectError: true
+	},
+	{
+		name: "Simulated Network Timeout/DNS Error",
+		networkErrorMsg: "getaddrinfo ENOTFOUND api.openai.com",
+		expectError: true
+	}
+];
+
+function simulateRequestBehavior(statusCode, responseData, networkErrorMsg) {
+	return new Promise((resolve, reject) => {
+		if (networkErrorMsg) {
+			reject(new Error(`Network error calling OpenAI: ${networkErrorMsg}`));
+			return;
+		}
+
+		if (statusCode && statusCode >= 200 && statusCode < 300) {
+			try {
+				const result = cleanAndParseResponse(responseData);
+				resolve(result);
+			} catch (err) {
+				reject(err);
+			}
+		} else {
+			reject(new Error(`OpenAI API error (${statusCode}): ${responseData}`));
+		}
+	});
+}
+
+async function runTests() {
 	console.log("Running Location Extractor Node Unit Tests...\n");
 	let passedCount = 0;
+	let totalCount = tests.length + apiFailureTests.length;
 
+	// 1. Run Response Parsing Tests
 	tests.forEach((t, index) => {
 		console.log(`Test #${index + 1}: ${t.name}`);
 		const rawResponseString = JSON.stringify(t.mockApiResponse);
@@ -121,10 +188,37 @@ function runTests() {
 		console.log("--------------------------------------------------");
 	});
 
-	console.log(`\nTest Summary: ${passedCount}/${tests.length} tests passed.`);
-	if (passedCount === tests.length) {
+	// 2. Run API and Network Failure Simulation Tests
+	console.log("\nRunning API Failure and Network Simulation Tests...\n");
+	for (let i = 0; i < apiFailureTests.length; i++) {
+		const t = apiFailureTests[i];
+		console.log(`API Test #${i + 1}: ${t.name}`);
+
+		try {
+			const result = await simulateRequestBehavior(t.statusCode, t.responseData, t.networkErrorMsg);
+			if (t.expectError) {
+				console.log(`❌ FAIL: Expected operation to fail, but it succeeded with: ${JSON.stringify(result)}`);
+			} else {
+				console.log(`✅ PASS: Operation succeeded with: ${JSON.stringify(result)}`);
+				passedCount++;
+			}
+		} catch (err) {
+			if (t.expectError) {
+				console.log(`✅ PASS: Correctly caught error: "${err.message}"`);
+				passedCount++;
+			} else {
+				console.log(`❌ FAIL: Unexpected error: ${err.message}`);
+			}
+		}
+		console.log("--------------------------------------------------");
+	}
+
+	console.log(`\nTest Summary: ${passedCount}/${totalCount} tests passed.`);
+	if (passedCount === totalCount) {
+		console.log("All test suites passed successfully!\n");
 		process.exit(0);
 	} else {
+		console.log("Some tests failed.\n");
 		process.exit(1);
 	}
 }
