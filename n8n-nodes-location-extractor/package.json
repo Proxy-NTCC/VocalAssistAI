@@ -1,0 +1,21 @@
+{
+  "name": "n8n-nodes-location-extractor",
+  "version": "1.0.0",
+  "description": "Custom n8n node to extract city and state location from customer tickets using OpenAI.",
+  "main": "dist/nodes/LocationExtractor/LocationExtractor.node.js",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "nodes": [
+      "dist/nodes/LocationExtractor/LocationExtractor.node.js"
+    ]
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "n8n-workflow": "^1.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
