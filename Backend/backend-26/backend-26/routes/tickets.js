@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const https = require('https');
 const Ticket = require('../models/Ticket');
 
 // CREATE a new ticket (typically called by webhook/n8n/ingress pipeline)
@@ -77,6 +78,133 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Ticket deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Helper to sync feedback to a dedicated Airtable table
+const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
+  const baseId = credentials.baseId || process.env.AIRTABLE_BASE_ID;
+  const pat = credentials.pat || process.env.AIRTABLE_PAT;
+  const tableName = credentials.tableName || 'Feedback';
+
+  if (!baseId || !pat || pat.startsWith('pat_vocal_assist_secret_key')) {
+    console.log('Skipping Airtable feedback sync: Credentials missing or mock key detected.');
+    return Promise.resolve(false);
+  }
+
+  const fields = {
+    "Ticket ID": ticket._id.toString(),
+    "Ticket Channel": ticket.channel || "",
+    "Customer Contact": ticket.customerContact || "",
+    "Resolution ID": feedbackItem.resolutionId,
+    "Rating": feedbackItem.rating === "up" ? "Thumbs Up" : "Thumbs Down",
+    "Category": feedbackItem.category || "",
+    "Query Text": feedbackItem.queryText || "",
+    "Timestamp": new Date(feedbackItem.ratedAt).toISOString()
+  };
+
+  if (ticket.airtableRecordId) {
+    fields["Ticket Link"] = [ticket.airtableRecordId];
+  }
+
+  const postData = JSON.stringify({
+    records: [{ fields }]
+  });
+
+  const options = {
+    hostname: 'api.airtable.com',
+    port: 443,
+    path: `/v0/${baseId}/${encodeURIComponent(tableName)}`,
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${pat}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  };
+
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`Successfully logged feedback in Airtable table "${tableName}".`);
+          resolve(true);
+        } else {
+          console.warn(`Airtable feedback sync returned status ${res.statusCode}: ${data}`);
+          resolve(false);
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      console.warn(`Network error syncing feedback to Airtable: ${e.message}`);
+      resolve(false);
+    });
+
+    req.write(postData);
+    req.end();
+  });
+};
+
+// SUBMIT/UPDATE feedback on similar resolution retrieval
+router.post('/:id/feedback', async (req, res) => {
+  try {
+    const { resolutionId, rating, category, queryText, airtableBaseId, airtablePat } = req.body;
+    if (!resolutionId || !rating) {
+      return res.status(400).json({ message: 'resolutionId and rating are required' });
+    }
+
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    // Initialize array if not exists
+    if (!ticket.referenceFeedback) {
+      ticket.referenceFeedback = [];
+    }
+
+    // Check if feedback for this resolutionId already exists
+    const existingIndex = ticket.referenceFeedback.findIndex(
+      (f) => f.resolutionId === resolutionId
+    );
+
+    let feedbackItem;
+
+    if (existingIndex > -1) {
+      // Update existing feedback
+      ticket.referenceFeedback[existingIndex].rating = rating;
+      ticket.referenceFeedback[existingIndex].category = category || ticket.referenceFeedback[existingIndex].category;
+      ticket.referenceFeedback[existingIndex].queryText = queryText || ticket.referenceFeedback[existingIndex].queryText;
+      ticket.referenceFeedback[existingIndex].ratedAt = Date.now();
+      feedbackItem = ticket.referenceFeedback[existingIndex];
+    } else {
+      // Add new feedback entry
+      const newFeedback = {
+        resolutionId,
+        rating,
+        category,
+        queryText,
+        ratedAt: Date.now()
+      };
+      ticket.referenceFeedback.push(newFeedback);
+      feedbackItem = newFeedback;
+    }
+
+    const savedTicket = await ticket.save();
+
+    // Trigger Airtable sync in the background
+    syncFeedbackToAirtable(savedTicket, feedbackItem, {
+      baseId: airtableBaseId,
+      pat: airtablePat,
+      tableName: 'Feedback'
+    }).catch(err => console.error('Airtable sync error:', err));
+
+    res.json(savedTicket);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 

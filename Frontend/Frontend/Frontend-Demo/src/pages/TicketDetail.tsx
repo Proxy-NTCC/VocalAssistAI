@@ -57,6 +57,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
   const [draftReply, setDraftReply] = useState<string>(ticket.draftReply || '');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [feedbackRatings, setFeedbackRatings] = useState<Record<string, 'up' | 'down'>>({});
 
   // Fetch similar resolutions based on the ticket's category (simulating Pinecone retrieval)
   const similarResolutions = HISTORICAL_RESOLUTIONS_DATABASE[category] || HISTORICAL_RESOLUTIONS_DATABASE['General'];
@@ -65,6 +66,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
     setStatus(ticket.status);
     setCategory(ticket.category);
     setDraftReply(ticket.draftReply || '');
+
+    // Set initial ratings
+    const initialRatings: Record<string, 'up' | 'down'> = {};
+    if (ticket.referenceFeedback) {
+      ticket.referenceFeedback.forEach((f) => {
+        initialRatings[f.resolutionId] = f.rating;
+      });
+    }
+    setFeedbackRatings(initialRatings);
   }, [ticket]);
 
   const handleStatusChange = async (newStatus: string) => {
@@ -127,6 +137,36 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
         setNotification(null);
       }, 4000);
     }, 1500);
+  };
+
+  const handleRateResolution = async (resolutionId: string, rating: 'up' | 'down', queryText: string) => {
+    // Optimistic UI state update
+    setFeedbackRatings((prev) => ({ ...prev, [resolutionId]: rating }));
+
+    const airtableBaseId = localStorage.getItem('airtable_base_id') || '';
+    const airtablePat = localStorage.getItem('airtable_pat') || '';
+
+    try {
+      const res = await fetch(`http://localhost:3000/tickets/${ticket._id}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolutionId,
+          rating,
+          category,
+          queryText,
+          airtableBaseId,
+          airtablePat,
+        }),
+      });
+
+      if (res.ok) {
+        const updatedTicket = await res.json();
+        onUpdateTicket(updatedTicket);
+      }
+    } catch (e) {
+      console.warn('API unavailable, updated feedback locally', e);
+    }
   };
 
   return (
@@ -254,6 +294,22 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
                   </div>
                   <div className="item-footer">
                     <span className="ref-tag">{res.id}</span>
+                    <div className="feedback-rating-container">
+                      <button
+                        className={`feedback-rate-btn thumbs-up-btn ${feedbackRatings[res.id] === 'up' ? 'active' : ''}`}
+                        onClick={() => handleRateResolution(res.id, 'up', res.query)}
+                        title="Rate useful"
+                      >
+                        👍
+                      </button>
+                      <button
+                        className={`feedback-rate-btn thumbs-down-btn ${feedbackRatings[res.id] === 'down' ? 'active' : ''}`}
+                        onClick={() => handleRateResolution(res.id, 'down', res.query)}
+                        title="Rate not useful"
+                      >
+                        👎
+                      </button>
+                    </div>
                     <button 
                       className="use-resolution-btn"
                       onClick={() => setDraftReply(prev => prev ? prev + '\n' + res.resolution : res.resolution)}

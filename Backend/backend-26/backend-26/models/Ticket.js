@@ -16,6 +16,13 @@ const TicketSchema = new mongoose.Schema({
   airtableRecordId: { type: String },
   draftReply: { type: String },
   similarResolvedTickets: [{ type: String }], // Pinecone reference IDs
+  referenceFeedback: [{
+    resolutionId: { type: String, required: true },
+    rating: { type: String, enum: ['up', 'down'], required: true },
+    category: { type: String },
+    queryText: { type: String },
+    ratedAt: { type: Date, default: Date.now }
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

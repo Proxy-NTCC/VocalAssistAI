@@ -19,6 +19,13 @@ export interface Ticket {
   airtableRecordId?: string;
   draftReply?: string;
   similarResolvedTickets?: string[];
+  referenceFeedback?: Array<{
+    resolutionId: string;
+    rating: 'up' | 'down';
+    category?: string;
+    queryText?: string;
+    ratedAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
