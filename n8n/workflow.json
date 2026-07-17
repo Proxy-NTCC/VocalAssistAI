@@ -1,0 +1,178 @@
+{
+  "name": "VocalAssistAI Ingestion Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "onEmailReceived": "nothing",
+        "format": "resolved",
+        "options": {
+          "downloadAttachments": false
+        }
+      },
+      "id": "imap-email-trigger-node-id",
+      "name": "IMAP Email Trigger",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "options": {}
+      },
+      "id": "whatsapp-webhook-trigger-node-id",
+      "name": "WhatsApp Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.channel || ($json.from && $json.from.includes('@') ? 'Email' : 'WhatsApp') }}",
+              "operation": "equal",
+              "value2": "Email"
+            }
+          ]
+        }
+      },
+      "id": "check-trigger-source-node-id",
+      "name": "Check Trigger Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        350,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "channel",
+              "value": "Email"
+            },
+            {
+              "name": "customerName",
+              "value": "={{ $json.from.name || $json.from.text || 'Anonymous' }}"
+            },
+            {
+              "name": "customerContact",
+              "value": "={{ $json.from.address || $json.from.text }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "rawContent",
+              "value": "={{ $json.text || $json.html || '' }}"
+            }
+          ]
+        }
+      },
+      "id": "parse-email-payload-node-id",
+      "name": "Parse Email Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "channel",
+              "value": "WhatsApp"
+            },
+            {
+              "name": "customerName",
+              "value": "={{ $json.contactName || $json.sender.name || 'Anonymous' }}"
+            },
+            {
+              "name": "customerContact",
+              "value": "={{ $json.contactNumber || $json.sender.phone || $json.from }}"
+            },
+            {
+              "name": "subject",
+              "value": "WhatsApp Message"
+            },
+            {
+              "name": "rawContent",
+              "value": "={{ $json.message || $json.text || '' }}"
+            }
+          ]
+        }
+      },
+      "id": "parse-whatsapp-payload-node-id",
+      "name": "Parse WhatsApp Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        600,
+        350
+      ]
+    }
+  ],
+  "connections": {
+    "IMAP Email Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Trigger Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Trigger Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Trigger Source": {
+      "main": [
+        [
+          {
+            "node": "Parse Email Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse WhatsApp Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 3600
+  },
+  "active": false,
+  "pinData": {}
+}
