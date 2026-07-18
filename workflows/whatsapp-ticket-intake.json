@@ -1,0 +1,98 @@
+{
+  "id": "whatsapp-ticket-intake",
+  "name": "WhatsApp Ticket Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-intake",
+        "options": {}
+      },
+      "id": "4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f78e5a6a-72ef-4c6e-821f-36173a11f26b",
+              "name": "channel",
+              "value": "WhatsApp",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "name": "Set Channel",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Sender": "={{ $json.body.From }}",
+            "Content": "={{ $json.body.Body }}",
+            "Channel": "={{ $json.channel }}"
+          }
+        }
+      },
+      "id": "6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      "name": "Airtable Create Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Channel": {
+      "main": [
+        [
+          {
+            "node": "Airtable Create Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "f7b0d9c1-a9e6-4b35-80c6-5f355e066a1b",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

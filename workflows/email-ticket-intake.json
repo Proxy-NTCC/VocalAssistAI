@@ -1,0 +1,99 @@
+{
+  "id": "email-ticket-intake",
+  "name": "Email Ticket Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "postAction": "nothing",
+        "format": "resolved"
+      },
+      "id": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Email Read (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e67e5a6a-72ef-4c6e-821f-36173a11f26a",
+              "name": "channel",
+              "value": "Email",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Set Channel",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Sender": "={{ $json.from.value[0].address }}",
+            "Subject": "={{ $json.subject }}",
+            "Content": "={{ $json.text }}",
+            "Channel": "={{ $json.channel }}"
+          }
+        }
+      },
+      "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Airtable Create Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Read (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Set Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Channel": {
+      "main": [
+        [
+          {
+            "node": "Airtable Create Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "f7b0d9c1-a9e6-4b35-80c6-5f355e066a1a",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
