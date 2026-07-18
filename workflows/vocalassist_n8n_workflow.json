@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body || $json;\nreturn [{\n  json: {\n    customerContact: body.from || body.email || body.phone || 'customer@example.com',\n    customerName: body.name || 'Anonymous Customer',\n    channel: body.channel || (body.phone ? 'WhatsApp' : 'Email'),\n    rawContent: body.message || body.text || body.content || 'Issue text',\n    subject: body.subject || 'Support Request'\n  }\n}];"
+        "jsCode": "const body = $json.body || $json;\n\n// Safe extractor for email addresses and phone numbers\nlet contact = 'customer@example.com';\nif (typeof body.from === 'object' && body.from?.value?.[0]?.address) {\n  contact = body.from.value[0].address;\n} else if (typeof body.from === 'string' && body.from.trim() !== '') {\n  contact = body.from;\n} else if (body.email) {\n  contact = body.email;\n} else if (body.phone || body.From) {\n  contact = body.phone || body.From;\n}\n\n// Safe extractor for customer name\nlet name = 'Anonymous Customer';\nif (typeof body.from === 'object' && body.from?.value?.[0]?.name) {\n  name = body.from.value[0].name;\n} else if (body.name) {\n  name = body.name;\n} else if (body.ProfileName) {\n  name = body.ProfileName;\n}\n\n// Determine channel\nconst channel = body.channel || ((body.From || body.phone) ? 'WhatsApp' : 'Email');\n\n// Safe content extractor\nconst rawContent = (body.text || body.message || body.content || body.Body || '').trim() || 'No content provided';\n\n// Safe subject extractor\nconst subject = (body.subject || (channel === 'WhatsApp' ? 'WhatsApp Inquiry' : 'Support Ticket')).trim();\n\nreturn [{\n  json: {\n    customerContact: contact,\n    customerName: name,\n    channel,\n    rawContent,\n    subject,\n    timestamp: body.timestamp || new Date().toISOString()\n  }\n}];"
       },
       "id": "node-2-extract",
       "name": "Extract Request Payload",
@@ -147,15 +147,17 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Customer Contact": "={{ $json.customerContact }}",
-            "Customer Name": "={{ $json.customerName }}",
-            "Channel": "={{ $json.channel }}",
-            "Raw Content": "={{ $json.rawContent }}",
-            "Subject": "={{ $json.subject }}",
-            "Category": "={{ $json.category }}",
-            "Urgency": "={{ $json.urgency }}",
-            "Location": "={{ $json.location }}",
-            "Matched Rule": "={{ $json.matchedRuleId }}"
+            "Sender": "={{ $json.customerContact || 'customer@example.com' }}",
+            "Customer Name": "={{ $json.customerName || 'Anonymous Customer' }}",
+            "Channel": "={{ $json.channel || 'Email' }}",
+            "Content": "={{ $json.rawContent || 'No content provided' }}",
+            "Subject": "={{ $json.subject || 'Support Request' }}",
+            "Category": "={{ $json.category || 'General' }}",
+            "Urgency": "={{ $json.urgency || 'Medium' }}",
+            "Location": "={{ $json.location || 'Unknown' }}",
+            "Original Language": "={{ $json.originalLanguage || 'en' }}",
+            "Matched Rule": "={{ $json.matchedRuleId || 'RULE-DEFAULT' }}",
+            "Created At": "={{ $json.routedAt || new Date().toISOString() }}"
           }
         }
       },
