@@ -4,7 +4,7 @@
     {
       "parameters": {
         "mailbox": "INBOX",
-        "onEmailReceived": "nothing",
+        "postProcessAction": "nothing",
         "format": "resolved",
         "options": {
           "downloadAttachments": false
@@ -23,6 +23,8 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "whatsapp-webhook",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
         "options": {}
       },
       "id": "whatsapp-webhook-trigger-node-id",
@@ -39,7 +41,7 @@
         "conditions": {
           "string": [
             {
-              "value1": "={{ $json.channel || ($json.from && $json.from.includes('@') ? 'Email' : 'WhatsApp') }}",
+              "value1": "={{ $json.channel || ($json.mailbox || ($json.from && String($json.from).includes('@')) ? 'Email' : 'WhatsApp') }}",
               "operation": "equal",
               "value2": "Email"
             }
@@ -65,19 +67,19 @@
             },
             {
               "name": "customerName",
-              "value": "={{ $json.from.name || $json.from.text || 'Anonymous' }}"
+              "value": "={{ typeof $json.from === 'object' ? ($json.from.name || $json.from.text || 'Anonymous') : ($json.from || 'Anonymous') }}"
             },
             {
               "name": "customerContact",
-              "value": "={{ $json.from.address || $json.from.text }}"
+              "value": "={{ typeof $json.from === 'object' ? ($json.from.address || $json.from.text || 'Unknown') : ($json.from || 'Unknown') }}"
             },
             {
               "name": "subject",
-              "value": "={{ $json.subject }}"
+              "value": "={{ $json.subject || 'No Subject' }}"
             },
             {
               "name": "rawContent",
-              "value": "={{ $json.text || $json.html || '' }}"
+              "value": "={{ $json.text || $json.html || $json.body || '' }}"
             }
           ]
         }
@@ -101,19 +103,19 @@
             },
             {
               "name": "customerName",
-              "value": "={{ $json.contactName || $json.sender.name || 'Anonymous' }}"
+              "value": "={{ $json.contactName || ($json.sender && $json.sender.name) || ($json.profile && $json.profile.name) || 'Anonymous' }}"
             },
             {
               "name": "customerContact",
-              "value": "={{ $json.contactNumber || $json.sender.phone || $json.from }}"
+              "value": "={{ $json.contactNumber || ($json.sender && $json.sender.phone) || $json.from || 'Unknown' }}"
             },
             {
               "name": "subject",
-              "value": "WhatsApp Message"
+              "value": "={{ $json.subject || 'WhatsApp Support Inquiry' }}"
             },
             {
               "name": "rawContent",
-              "value": "={{ $json.message || $json.text || '' }}"
+              "value": "={{ $json.message || ($json.text && $json.text.body) || $json.text || '' }}"
             }
           ]
         }
