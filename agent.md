@@ -25,7 +25,8 @@ VocalAIAssistant/
 │           │   ├── Ticket.js       # Customer tickets model
 │           │   └── Resolution.js   # Resolution cache & knowledge base
 │           └── routes/             # Backend API routing
-│               └── tickets.js      # Ticket endpoints (create, fetch, update)
+│               ├── tickets.js      # Ticket endpoints (create, fetch, update, reply)
+│               └── settings.js     # System settings & webhook endpoints
 └── Frontend/
     └── Frontend/
         └── Frontend-Demo/
@@ -38,11 +39,13 @@ VocalAIAssistant/
             │   ├── components/     # Reusable UI components
             │   │   ├── TicketCard.tsx
             │   │   ├── StatusBadge.tsx
-            │   │   └── LanguageBadge.tsx
+            │   │   ├── LanguageBadge.tsx
+            │   │   ├── FilterBar.tsx
+            │   │   └── StatsOverview.tsx
             │   └── pages/          # Application views/pages
             │       ├── Dashboard.tsx    # Main tickets overview page
             │       ├── TicketDetail.tsx # Detailed view & reply editor
-            │       └── Settings.tsx     # n8n & Airtable configurations
+            │       └── Settings.tsx     # n8n, Airtable & Pinecone configurations
 ```
 
 ---
@@ -51,7 +54,7 @@ VocalAIAssistant/
 
 - **Frontend**: React (Vite, TypeScript, TailwindCSS/Vanilla CSS, Lucide icons, Axios)
 - **Backend**: Express.js (Node.js), Mongoose (MongoDB)
-- **Database**: MongoDB (Atlas)
+- **Database**: MongoDB (Atlas/Local)
 - **Automation Pipeline**: n8n workflow engine
 - **Ticket Dashboard / CRM**: Airtable base & tables
 - **Vector Database**: Pinecone (for ticket embeddings and similarity matches)
@@ -88,11 +91,40 @@ const TicketSchema = new mongoose.Schema({
 module.exports = mongoose.model('Ticket', TicketSchema);
 ```
 
+### 3.2. Resolution Schema (`models/Resolution.js`)
+```javascript
+const mongoose = require('mongoose');
+
+const ResolutionSchema = new mongoose.Schema({
+  ticketId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' },
+  vectorId: { type: String }, // Pinecone Vector ID
+  queryText: { type: String, required: true },
+  responseText: { type: String, required: true },
+  category: { type: String },
+  language: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Resolution', ResolutionSchema);
+```
+
 ---
 
-## 4. Page-Wise Frontend Development Details
+## 4. Backend API Specifications
 
-### 4.1. Dashboard Page (`pages/Dashboard.tsx`)
+- **`GET /api/tickets`**: Fetch filtered tickets with pagination.
+- **`POST /api/tickets`**: Create/ingest a new ticket (used by n8n webhook sink).
+- **`GET /api/tickets/:id`**: Fetch detailed information for a single ticket.
+- **`PUT /api/tickets/:id`**: Update ticket status, urgency, or category.
+- **`POST /api/tickets/:id/reply`**: Save and dispatch customer response draft.
+- **`GET /api/settings`**: Fetch configuration status (n8n, Airtable, Pinecone).
+- **`POST /api/settings`**: Update connection configurations.
+
+---
+
+## 5. Page-Wise Frontend Development Details
+
+### 5.1. Dashboard Page (`pages/Dashboard.tsx`)
 - **Purpose**: Displays lists of incoming multilingual tickets categorized by urgency, topic, and location.
 - **Key Features**:
   - Stat counters (New Tickets, Open Tickets, Language Distribution, Avg Resolution Time).
@@ -100,7 +132,7 @@ module.exports = mongoose.model('Ticket', TicketSchema);
   - Multi-select filters (Filter by Channel, Status, Urgency, Original Language, Location).
   - Quick action buttons (Translate, Assign, Route to Airtable).
 
-### 4.2. Ticket Detail Page (`pages/TicketDetail.tsx`)
+### 5.2. Ticket Detail Page (`pages/TicketDetail.tsx`)
 - **Purpose**: Provides full conversational view and resolution interface for a single ticket.
 - **Key Features**:
   - Raw client text and Auto-translated English translation side-by-side.
@@ -109,7 +141,7 @@ module.exports = mongoose.model('Ticket', TicketSchema);
   - Generated draft response in the client's original language.
   - Live response edit and submit (sends email draft or WhatsApp reply).
 
-### 4.3. Settings Page (`pages/Settings.tsx`)
+### 5.3. Settings Page (`pages/Settings.tsx`)
 - **Purpose**: Manage API keys, webhook URLs, and external system integrations.
 - **Key Features**:
   - Airtable Base ID, Table Name, and Personal Access Token (PAT) config.
@@ -119,12 +151,12 @@ module.exports = mongoose.model('Ticket', TicketSchema);
 
 ---
 
-## 5. Workflow Automation Plan (n8n)
+## 6. Workflow Automation Plan (n8n)
 
 1. **Ingress**: WhatsApp Webhook / IMAP Email Trigger node.
 2. **Detection & Extraction**: Extract customer name, contact details, subject, and body.
 3. **AI Agent Pipeline**:
-   - **Language Detector Node**: Identifies the vernacular language (Hindi, Tamil, Telugu, Kannada, Bengali, etc.).
+   - **Language Detector Node**: Identifies the vernacular language (Hindi, Tamil, Telugu, Kannada, Bengali, Gujarati, Marathi, etc.).
    - **Translation Node**: Translates query to English for internal routing.
    - **Classification Node**: Classifies the category, location, and urgency.
 4. **Vector DB (Pinecone)**: Query Pinecone index using embeddings of the English translation to locate the top 3 similar historical ticket resolutions.
