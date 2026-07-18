@@ -19,6 +19,8 @@ const TicketSchema = new mongoose.Schema({
   referenceFeedback: [{
     resolutionId: { type: String, required: true },
     rating: { type: String, enum: ['up', 'down'], required: true },
+    retrievalEventId: { type: String },
+    referenceSet: [{ type: String }],
     category: { type: String },
     queryText: { type: String },
     comment: { type: String },

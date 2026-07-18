@@ -97,6 +97,8 @@ const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
 
   const fields = {
     "Ticket ID": ticket._id.toString(),
+    "Retrieval Event ID": feedbackItem.retrievalEventId || `retrieval_${ticket._id}`,
+    "Reference Set": Array.isArray(feedbackItem.referenceSet) ? feedbackItem.referenceSet.join(', ') : (ticket.similarResolvedTickets || []).join(', '),
     "Ticket Channel": ticket.channel || "",
     "Customer Contact": ticket.customerContact || "",
     "Resolution ID": feedbackItem.resolutionId,
@@ -155,7 +157,7 @@ const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
 // SUBMIT/UPDATE feedback on similar resolution retrieval
 router.post('/:id/feedback', async (req, res) => {
   try {
-    const { resolutionId, rating, category, queryText, comment, airtableBaseId, airtablePat } = req.body;
+    const { resolutionId, rating, category, queryText, comment, retrievalEventId, referenceSet, airtableBaseId, airtablePat } = req.body;
     if (!resolutionId || !rating) {
       return res.status(400).json({ message: 'resolutionId and rating are required' });
     }
@@ -164,6 +166,12 @@ router.post('/:id/feedback', async (req, res) => {
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
+
+    // Determine event ID and reference set for retrieval tracking
+    const eventId = retrievalEventId || `retrieval_${ticket._id}_${category || ticket.category || 'gen'}`;
+    const refSet = Array.isArray(referenceSet) && referenceSet.length > 0
+      ? referenceSet
+      : (ticket.similarResolvedTickets && ticket.similarResolvedTickets.length > 0 ? ticket.similarResolvedTickets : [resolutionId]);
 
     // Initialize array if not exists
     if (!ticket.referenceFeedback) {
@@ -180,6 +188,8 @@ router.post('/:id/feedback', async (req, res) => {
     if (existingIndex > -1) {
       // Update existing feedback
       ticket.referenceFeedback[existingIndex].rating = rating;
+      ticket.referenceFeedback[existingIndex].retrievalEventId = eventId;
+      ticket.referenceFeedback[existingIndex].referenceSet = refSet;
       ticket.referenceFeedback[existingIndex].category = category || ticket.referenceFeedback[existingIndex].category;
       ticket.referenceFeedback[existingIndex].queryText = queryText || ticket.referenceFeedback[existingIndex].queryText;
       if (comment !== undefined) {
@@ -192,6 +202,8 @@ router.post('/:id/feedback', async (req, res) => {
       const newFeedback = {
         resolutionId,
         rating,
+        retrievalEventId: eventId,
+        referenceSet: refSet,
         category,
         queryText,
         comment: comment || '',

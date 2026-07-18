@@ -22,6 +22,8 @@ export interface Ticket {
   referenceFeedback?: Array<{
     resolutionId: string;
     rating: 'up' | 'down';
+    retrievalEventId?: string;
+    referenceSet?: string[];
     category?: string;
     queryText?: string;
     ratedAt: string;

@@ -145,6 +145,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
 
     const airtableBaseId = localStorage.getItem('airtable_base_id') || '';
     const airtablePat = localStorage.getItem('airtable_pat') || '';
+    const retrievalEventId = `retrieval_${ticket._id}_${category}`;
+    const referenceSet = similarResolutions.map((r) => r.id);
 
     try {
       const res = await fetch(`http://localhost:3000/tickets/${ticket._id}/feedback`, {
@@ -156,6 +158,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
           category,
           queryText,
           comment: comment || '',
+          retrievalEventId,
+          referenceSet,
           airtableBaseId,
           airtablePat,
         }),
