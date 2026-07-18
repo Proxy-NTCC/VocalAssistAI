@@ -103,6 +103,7 @@ const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
     "Rating": feedbackItem.rating === "up" ? "Thumbs Up" : "Thumbs Down",
     "Category": feedbackItem.category || "",
     "Query Text": feedbackItem.queryText || "",
+    "Comments": feedbackItem.comment || "",
     "Timestamp": new Date(feedbackItem.ratedAt).toISOString()
   };
 
@@ -154,7 +155,7 @@ const syncFeedbackToAirtable = (ticket, feedbackItem, credentials) => {
 // SUBMIT/UPDATE feedback on similar resolution retrieval
 router.post('/:id/feedback', async (req, res) => {
   try {
-    const { resolutionId, rating, category, queryText, airtableBaseId, airtablePat } = req.body;
+    const { resolutionId, rating, category, queryText, comment, airtableBaseId, airtablePat } = req.body;
     if (!resolutionId || !rating) {
       return res.status(400).json({ message: 'resolutionId and rating are required' });
     }
@@ -181,6 +182,9 @@ router.post('/:id/feedback', async (req, res) => {
       ticket.referenceFeedback[existingIndex].rating = rating;
       ticket.referenceFeedback[existingIndex].category = category || ticket.referenceFeedback[existingIndex].category;
       ticket.referenceFeedback[existingIndex].queryText = queryText || ticket.referenceFeedback[existingIndex].queryText;
+      if (comment !== undefined) {
+        ticket.referenceFeedback[existingIndex].comment = comment;
+      }
       ticket.referenceFeedback[existingIndex].ratedAt = Date.now();
       feedbackItem = ticket.referenceFeedback[existingIndex];
     } else {
@@ -190,6 +194,7 @@ router.post('/:id/feedback', async (req, res) => {
         rating,
         category,
         queryText,
+        comment: comment || '',
         ratedAt: Date.now()
       };
       ticket.referenceFeedback.push(newFeedback);

@@ -139,7 +139,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
     }, 1500);
   };
 
-  const handleRateResolution = async (resolutionId: string, rating: 'up' | 'down', queryText: string) => {
+  const handleRateResolution = async (resolutionId: string, rating: 'up' | 'down', queryText: string, comment?: string) => {
     // Optimistic UI state update
     setFeedbackRatings((prev) => ({ ...prev, [resolutionId]: rating }));
 
@@ -155,6 +155,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, onBack, onUp
           rating,
           category,
           queryText,
+          comment: comment || '',
           airtableBaseId,
           airtablePat,
         }),

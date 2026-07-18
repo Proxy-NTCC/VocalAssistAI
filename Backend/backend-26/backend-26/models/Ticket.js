@@ -21,6 +21,7 @@ const TicketSchema = new mongoose.Schema({
     rating: { type: String, enum: ['up', 'down'], required: true },
     category: { type: String },
     queryText: { type: String },
+    comment: { type: String },
     ratedAt: { type: Date, default: Date.now }
   }],
   createdAt: { type: Date, default: Date.now },
