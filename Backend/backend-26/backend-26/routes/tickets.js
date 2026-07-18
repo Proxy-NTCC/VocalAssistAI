@@ -3,11 +3,109 @@ const router = express.Router();
 const https = require('https');
 const Ticket = require('../models/Ticket');
 
+// Helper to dynamically resolve target Airtable base/table and sync ticket record
+const syncTicketToAirtable = (ticket) => {
+  const pat = process.env.AIRTABLE_PAT;
+  if (!pat || pat.startsWith('pat_vocal_assist_secret_key')) {
+    console.log('Skipping Airtable ticket sync: PAT missing or mock key detected.');
+    return Promise.resolve(false);
+  }
+
+  const urgency = ticket.urgency || 'Medium';
+  const category = ticket.category || 'General';
+  const location = ticket.location || 'Unknown';
+  const originalLanguage = ticket.originalLanguage || 'en';
+
+  const northLocations = ['Noida', 'Delhi', 'Gurgaon', 'Lucknow', 'Patna', 'Uttar Pradesh', 'Bihar', 'Haryana', 'Delhi NCR'];
+  const southLocations = ['Bangalore', 'Chennai', 'Hyderabad', 'Coimbatore', 'Karnataka', 'Tamil Nadu', 'Telangana', 'Kerala'];
+  const vernacularLangs = ['hi', 'ta', 'te', 'kn', 'bn', 'mr'];
+
+  let matchedRuleId = 'RULE-DEFAULT';
+  let baseId = process.env.AIRTABLE_BASE_ID || 'appVocalGeneralBase';
+  let tableName = process.env.AIRTABLE_TABLE_NAME || 'Tickets';
+
+  if (urgency === 'Critical' || (urgency === 'High' && category === 'Refund')) {
+    matchedRuleId = 'RULE-001';
+    baseId = process.env.AIRTABLE_CRITICAL_BASE_ID || baseId;
+    tableName = 'Critical_Escalations';
+  } else if (northLocations.some(l => location.toLowerCase().includes(l.toLowerCase()))) {
+    matchedRuleId = 'RULE-002';
+    baseId = process.env.AIRTABLE_NORTH_BASE_ID || baseId;
+    tableName = 'North_Retail_Tickets';
+  } else if (southLocations.some(l => location.toLowerCase().includes(l.toLowerCase()))) {
+    matchedRuleId = 'RULE-003';
+    baseId = process.env.AIRTABLE_SOUTH_BASE_ID || baseId;
+    tableName = 'South_Retail_Tickets';
+  } else if (category === 'Refund') {
+    matchedRuleId = 'RULE-004';
+    baseId = process.env.AIRTABLE_FINANCE_BASE_ID || baseId;
+    tableName = 'Refund_Claims';
+  } else if (category === 'Delivery') {
+    matchedRuleId = 'RULE-005';
+    baseId = process.env.AIRTABLE_LOGISTICS_BASE_ID || baseId;
+    tableName = 'Delivery_Issues';
+  } else if (vernacularLangs.includes(originalLanguage)) {
+    matchedRuleId = 'RULE-006';
+    baseId = process.env.AIRTABLE_VERNACULAR_BASE_ID || baseId;
+    tableName = 'Vernacular_Queue';
+  }
+
+  const fields = {
+    "Ticket ID": ticket._id.toString(),
+    "Customer Contact": ticket.customerContact || "",
+    "Customer Name": ticket.customerName || "",
+    "Channel": ticket.channel || "",
+    "Raw Content": ticket.rawContent || "",
+    "Subject": ticket.subject || "",
+    "Category": category,
+    "Urgency": urgency,
+    "Location": location,
+    "Original Language": originalLanguage,
+    "Matched Rule": matchedRuleId
+  };
+
+  const postData = JSON.stringify({ records: [{ fields }] });
+  const options = {
+    hostname: 'api.airtable.com',
+    port: 443,
+    path: `/v0/${baseId}/${encodeURIComponent(tableName)}`,
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${pat}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  };
+
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`[Airtable Ticket Sync] Successfully posted ticket ${ticket._id} to Base: "${baseId}", Table: "${tableName}" via Rule: ${matchedRuleId}.`);
+          resolve(true);
+        } else {
+          console.error(`[Airtable Ticket Sync Error] HTTP Status ${res.statusCode}: ${data}`);
+          resolve(false);
+        }
+      });
+    });
+    req.on('error', (e) => {
+      console.error(`[Airtable Ticket Sync Error] Network error: ${e.message}`);
+      resolve(false);
+    });
+    req.write(postData);
+    req.end();
+  });
+};
+
 // CREATE a new ticket (typically called by webhook/n8n/ingress pipeline)
 router.post('/', async (req, res) => {
   try {
     const newTicket = new Ticket(req.body);
     const savedTicket = await newTicket.save();
+    syncTicketToAirtable(savedTicket).catch(err => console.error('[Airtable Sync Async Error]', err));
     res.status(201).json(savedTicket);
   } catch (err) {
     const ticketId = req.body._id || req.body.originalId || 'new';

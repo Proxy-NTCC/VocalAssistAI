@@ -127,17 +127,35 @@
     },
     {
       "parameters": {
+        "jsCode": "const classification = $node['AI Classify Urgency & Location']?.json || {};\nconst languageInfo = $node['AI Language Detect & Translate']?.json || {};\nconst payload = $node['Extract Request Payload']?.json || {};\n\nconst urgency = classification.urgency || 'Medium';\nconst category = classification.category || 'General';\nconst location = classification.location || 'Unknown';\nconst originalLanguage = languageInfo.originalLanguage || payload.originalLanguage || 'en';\n\nconst northLocations = ['Noida', 'Delhi', 'Gurgaon', 'Lucknow', 'Patna', 'Uttar Pradesh', 'Bihar', 'Haryana', 'Delhi NCR'];\nconst southLocations = ['Bangalore', 'Chennai', 'Hyderabad', 'Coimbatore', 'Karnataka', 'Tamil Nadu', 'Telangana', 'Kerala'];\nconst vernacularLangs = ['hi', 'ta', 'te', 'kn', 'bn', 'mr'];\n\nlet matchedRuleId = 'RULE-DEFAULT';\nlet matchedRuleName = 'General Helpdesk Fallback';\nlet routedBaseId = process.env.AIRTABLE_BASE_ID || 'appVocalGeneralBase';\nlet routedTableName = process.env.AIRTABLE_TABLE_NAME || 'Tickets';\n\nif (urgency === 'Critical' || (urgency === 'High' && category === 'Refund')) {\n  matchedRuleId = 'RULE-001';\n  matchedRuleName = 'Critical & Escalations Routing';\n  routedBaseId = process.env.AIRTABLE_CRITICAL_BASE_ID || 'appVocalCriticalBase';\n  routedTableName = 'Critical_Escalations';\n} else if (northLocations.some(l => location.toLowerCase().includes(l.toLowerCase()))) {\n  matchedRuleId = 'RULE-002';\n  matchedRuleName = 'North Regional Retail Routing';\n  routedBaseId = process.env.AIRTABLE_NORTH_BASE_ID || 'appVocalNorthBase';\n  routedTableName = 'North_Retail_Tickets';\n} else if (southLocations.some(l => location.toLowerCase().includes(l.toLowerCase()))) {\n  matchedRuleId = 'RULE-003';\n  matchedRuleName = 'South Regional Retail Routing';\n  routedBaseId = process.env.AIRTABLE_SOUTH_BASE_ID || 'appVocalSouthBase';\n  routedTableName = 'South_Retail_Tickets';\n} else if (category === 'Refund') {\n  matchedRuleId = 'RULE-004';\n  matchedRuleName = 'Refunds & Payments Topic Routing';\n  routedBaseId = process.env.AIRTABLE_FINANCE_BASE_ID || 'appVocalFinanceBase';\n  routedTableName = 'Refund_Claims';\n} else if (category === 'Delivery') {\n  matchedRuleId = 'RULE-005';\n  matchedRuleName = 'Delivery & Logistics Topic Routing';\n  routedBaseId = process.env.AIRTABLE_LOGISTICS_BASE_ID || 'appVocalLogisticsBase';\n  routedTableName = 'Delivery_Issues';\n} else if (vernacularLangs.includes(originalLanguage)) {\n  matchedRuleId = 'RULE-006';\n  matchedRuleName = 'Vernacular Language Queue';\n  routedBaseId = process.env.AIRTABLE_VERNACULAR_BASE_ID || 'appVocalVernacularBase';\n  routedTableName = 'Vernacular_Queue';\n}\n\nreturn [{\n  json: {\n    ...payload,\n    urgency,\n    category,\n    location,\n    originalLanguage,\n    matchedRuleId,\n    matchedRuleName,\n    routedBaseId,\n    routedTableName,\n    routedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-4b-airtable-router",
+      "name": "Evaluate Airtable Routing Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1090,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
         "operation": "append",
-        "base": "={{ $env.AIRTABLE_BASE_ID }}",
-        "table": "={{ $env.AIRTABLE_TABLE_NAME || 'Tickets' }}",
+        "base": "={{ $json.routedBaseId }}",
+        "table": "={{ $json.routedTableName }}",
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Customer Contact": "={{ $node['Extract Request Payload'].json.customerContact }}",
-            "Customer Name": "={{ $node['Extract Request Payload'].json.customerName }}",
-            "Channel": "={{ $node['Extract Request Payload'].json.channel }}",
-            "Raw Content": "={{ $node['Extract Request Payload'].json.rawContent }}",
-            "Subject": "={{ $node['Extract Request Payload'].json.subject }}"
+            "Customer Contact": "={{ $json.customerContact }}",
+            "Customer Name": "={{ $json.customerName }}",
+            "Channel": "={{ $json.channel }}",
+            "Raw Content": "={{ $json.rawContent }}",
+            "Subject": "={{ $json.subject }}",
+            "Category": "={{ $json.category }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Location": "={{ $json.location }}",
+            "Matched Rule": "={{ $json.matchedRuleId }}"
           }
         }
       },
@@ -146,7 +164,7 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2,
       "position": [
-        1200,
+        1300,
         200
       ],
       "onError": "continueErrorOutput"
@@ -259,6 +277,24 @@
       ]
     },
     "Pinecone Historic Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Airtable Routing Rules",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Airtable Routing Rules": {
       "main": [
         [
           {

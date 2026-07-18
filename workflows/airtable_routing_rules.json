@@ -1,0 +1,135 @@
+{
+  "routingEngine": "VocalAssistAI Airtable Destination Router",
+  "version": "1.0.0",
+  "description": "Multi-criteria routing engine mapping ticket metadata (urgency, topic/category, location, language) to Airtable bases and tables.",
+  "routingCriteriaSupported": [
+    "urgency",
+    "category",
+    "location",
+    "originalLanguage"
+  ],
+  "rules": [
+    {
+      "id": "RULE-001",
+      "name": "Critical & Escalations Routing",
+      "priority": 1,
+      "conditions": {
+        "operator": "OR",
+        "clauses": [
+          { "field": "urgency", "operator": "EQUALS", "value": "Critical" },
+          { "field": "urgency", "operator": "EQUALS", "value": "High", "andField": "category", "andValue": "Refund" }
+        ]
+      },
+      "destination": {
+        "baseId": "appVocalCriticalBase",
+        "tableName": "Critical_Escalations",
+        "description": "High-priority queue monitored by Senior Escalations Managers."
+      }
+    },
+    {
+      "id": "RULE-002",
+      "name": "North Regional Retail Routing",
+      "priority": 2,
+      "conditions": {
+        "operator": "IN",
+        "field": "location",
+        "values": [
+          "Noida",
+          "Delhi",
+          "Gurgaon",
+          "Lucknow",
+          "Patna",
+          "Uttar Pradesh",
+          "Bihar",
+          "Haryana",
+          "Delhi NCR"
+        ]
+      },
+      "destination": {
+        "baseId": "appVocalNorthBase",
+        "tableName": "North_Retail_Tickets",
+        "description": "North India Regional Hub Airtable Dashboard."
+      }
+    },
+    {
+      "id": "RULE-003",
+      "name": "South Regional Retail Routing",
+      "priority": 2,
+      "conditions": {
+        "operator": "IN",
+        "field": "location",
+        "values": [
+          "Bangalore",
+          "Chennai",
+          "Hyderabad",
+          "Coimbatore",
+          "Karnataka",
+          "Tamil Nadu",
+          "Telangana",
+          "Kerala"
+        ]
+      },
+      "destination": {
+        "baseId": "appVocalSouthBase",
+        "tableName": "South_Retail_Tickets",
+        "description": "South India Regional Hub Airtable Dashboard."
+      }
+    },
+    {
+      "id": "RULE-004",
+      "name": "Refunds & Payments Topic Routing",
+      "priority": 3,
+      "conditions": {
+        "field": "category",
+        "operator": "EQUALS",
+        "value": "Refund"
+      },
+      "destination": {
+        "baseId": "appVocalFinanceBase",
+        "tableName": "Refund_Claims",
+        "description": "Finance and Payment Gateway Claims Queue."
+      }
+    },
+    {
+      "id": "RULE-005",
+      "name": "Delivery & Logistics Topic Routing",
+      "priority": 3,
+      "conditions": {
+        "field": "category",
+        "operator": "EQUALS",
+        "value": "Delivery"
+      },
+      "destination": {
+        "baseId": "appVocalLogisticsBase",
+        "tableName": "Delivery_Issues",
+        "description": "Logistics & Courier Partner Escalation Queue."
+      }
+    },
+    {
+      "id": "RULE-006",
+      "name": "Vernacular Language Queue",
+      "priority": 4,
+      "conditions": {
+        "field": "originalLanguage",
+        "operator": "IN",
+        "values": ["hi", "ta", "te", "kn", "bn", "mr"]
+      },
+      "destination": {
+        "baseId": "appVocalVernacularBase",
+        "tableName": "Vernacular_Queue",
+        "description": "Vernacular Language Support Specialists Queue."
+      }
+    },
+    {
+      "id": "RULE-DEFAULT",
+      "name": "General Helpdesk Fallback",
+      "priority": 99,
+      "conditions": "DEFAULT",
+      "destination": {
+        "baseId": "appVocalGeneralBase",
+        "tableName": "Tickets",
+        "description": "Default General Support Airtable Dashboard."
+      }
+    }
+  ]
+}
