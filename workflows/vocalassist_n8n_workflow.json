@@ -1,0 +1,323 @@
+{
+  "id": "vocalassist-main-workflow",
+  "name": "VocalAssistAI Master Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vocalassist-intake",
+        "options": {}
+      },
+      "id": "node-1-webhook",
+      "name": "Support Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nreturn [{\n  json: {\n    customerContact: body.from || body.email || body.phone || 'customer@example.com',\n    customerName: body.name || 'Anonymous Customer',\n    channel: body.channel || (body.phone ? 'WhatsApp' : 'Email'),\n    rawContent: body.message || body.text || body.content || 'Issue text',\n    subject: body.subject || 'Support Request'\n  }\n}];"
+      },
+      "id": "node-2-extract",
+      "name": "Extract Request Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY || $env.GEMINI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Detect the vernacular language of the input text (e.g. hi, ta, te, kn, mr, bn, en) and translate the message into clear English.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.rawContent }}\"\n    }\n  ]\n}"
+      },
+      "id": "node-3-detect-translate",
+      "name": "AI Language Detect & Translate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY || $env.GEMINI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Classify ticket category (Order, Refund, Delivery, Product, General), urgency (Low, Medium, High, Critical), and location (city/region name or Unknown). Return strict JSON: { category, urgency, location }\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $node['Extract Request Payload'].json.rawContent }}\"\n    }\n  ]\n}"
+      },
+      "id": "node-4-classify",
+      "name": "AI Classify Urgency & Location",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PINECONE_INDEX_URL || 'https://vocalassist-index.pinecone.io/query' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Api-Key",
+              "value": "={{ $env.PINECONE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"topK\": 3,\n  \"includeMetadata\": true,\n  \"namespace\": \"resolutions\"\n}"
+      },
+      "id": "node-5-pinecone",
+      "name": "Pinecone Historic Vector Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "base": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME || 'Tickets' }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer Contact": "={{ $node['Extract Request Payload'].json.customerContact }}",
+            "Customer Name": "={{ $node['Extract Request Payload'].json.customerName }}",
+            "Channel": "={{ $node['Extract Request Payload'].json.channel }}",
+            "Raw Content": "={{ $node['Extract Request Payload'].json.rawContent }}",
+            "Subject": "={{ $node['Extract Request Payload'].json.subject }}"
+          }
+        }
+      },
+      "id": "node-6-airtable",
+      "name": "Airtable Sync Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL || 'http://localhost:5000' }}/tickets",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"channel\": \"{{ $node['Extract Request Payload'].json.channel }}\",\n  \"customerName\": \"{{ $node['Extract Request Payload'].json.customerName }}\",\n  \"customerContact\": \"{{ $node['Extract Request Payload'].json.customerContact }}\",\n  \"rawContent\": \"{{ $node['Extract Request Payload'].json.rawContent }}\",\n  \"subject\": \"{{ $node['Extract Request Payload'].json.subject }}\",\n  \"airtableRecordId\": \"{{ $json.id || '' }}\"\n}"
+      },
+      "id": "node-7-mongodb",
+      "name": "MongoDB Backend API Persistence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1420,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": "error-handling-subworkflow",
+        "mode": "each"
+      },
+      "id": "node-8-error-handler-subworkflow",
+      "name": "Execute Centralized Error Sub-Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        800,
+        500
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Support Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Request Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Request Payload": {
+      "main": [
+        [
+          {
+            "node": "AI Language Detect & Translate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Language Detect & Translate": {
+      "main": [
+        [
+          {
+            "node": "AI Classify Urgency & Location",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classify Urgency & Location": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Historic Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Historic Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Airtable Sync Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable Sync Record": {
+      "main": [
+        [
+          {
+            "node": "MongoDB Backend API Persistence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB Backend API Persistence": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "errorWorkflow": "error-handling-subworkflow"
+  },
+  "versionId": "vocalassist-main-v1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    "VocalAssistAI",
+    "Master-Workflow",
+    "Error-Handling-Integrated"
+  ]
+}

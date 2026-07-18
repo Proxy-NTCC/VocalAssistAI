@@ -212,4 +212,16 @@ router.post('/:id/feedback', async (req, res) => {
   }
 });
 
+// POST /tickets/errors - Receives error logs from n8n error handling sub-workflow
+router.post('/errors', async (req, res) => {
+  try {
+    const errorLog = req.body;
+    console.error(`[n8n Workflow Error Logged] Timestamp: ${errorLog.timestamp || new Date().toISOString()} | Workflow: "${errorLog.workflowName || 'N/A'}" | Node: "${errorLog.failedNodeName || 'N/A'}" | Message: "${errorLog.errorMessage || 'N/A'}" | Ticket ID: "${errorLog.ticketId || 'N/A'}"`);
+    res.status(201).json({ status: 'logged', errorLog });
+  } catch (err) {
+    console.error('[Backend Log Endpoint Error]', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

@@ -14,7 +14,8 @@
       "position": [
         0,
         0
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -37,7 +38,8 @@
       "position": [
         220,
         0
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -60,6 +62,21 @@
       "position": [
         480,
         0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": "error-handling-subworkflow",
+        "mode": "each"
+      },
+      "id": "7f8a9b0c-1d2e-3f4a-5b6c-7d8e9f0a1b2c",
+      "name": "Execute Centralized Error Sub-Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        260,
+        250
       ]
     }
   ],
@@ -70,6 +87,13 @@
         [
           {
             "node": "Set Channel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
             "type": "main",
             "index": 0
           }
@@ -84,15 +108,38 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable Create Record": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Execute Centralized Error Sub-Workflow",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
   "active": false,
-  "settings": {},
+  "settings": {
+    "errorWorkflow": "error-handling-subworkflow"
+  },
   "versionId": "f7b0d9c1-a9e6-4b35-80c6-5f355e066a1b",
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "tags": []
+  "tags": [
+    "Error-Handling-Integrated"
+  ]
 }
