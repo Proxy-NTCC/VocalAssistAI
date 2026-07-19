@@ -27,52 +27,12 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "27680f4f-4d92-4914-bc48-eb6b95765942",
-              "name": "ticketId",
-              "value": "={{ $json.messageId }}",
-              "type": "string"
-            },
-            {
-              "id": "8bb3e85e-df6f-47b6-b52b-287843818e38",
-              "name": "source",
-              "value": "Email",
-              "type": "string"
-            },
-            {
-              "id": "fb6f3cc9-f9c3-4d40-b631-0df8ceb626e2",
-              "name": "sender",
-              "value": "={{ $json.from.value[0].address }}",
-              "type": "string"
-            },
-            {
-              "id": "e6df41c2-c0ec-48e0-bb15-779836371cf7",
-              "name": "subject",
-              "value": "={{ $json.subject }}",
-              "type": "string"
-            },
-            {
-              "id": "a9dbd445-5d9c-4995-b0b4-6a84f3cc4a4b",
-              "name": "body",
-              "value": "={{ $json.text }}",
-              "type": "string"
-            },
-            {
-              "id": "b18b4594-52d3-46c6-9467-850dfd9eb59d",
-              "name": "receivedAt",
-              "value": "={{ $json.date }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "const email = $json;\n\n// Extract sender email cleanly\nlet senderEmail = \"\";\nif (email.from && email.from.value && email.from.value.length > 0) {\n  senderEmail = email.from.value[0].address || \"\";\n} else if (typeof email.from === 'string') {\n  senderEmail = email.from;\n}\n\n// Handle body parsing (plain text and HTML emails)\nlet parsedBody = \"\";\nif (email.text) {\n  parsedBody = email.text.trim();\n} else if (email.html) {\n  // Pre-process common HTML block tags to preserve formatting and readability\n  let cleanHtml = email.html\n    .replace(/<style([\\s\\S]*?)<\\/style>/gi, '')   // Remove CSS styles\n    .replace(/<script([\\s\\S]*?)<\\/script>/gi, '') // Remove JS scripts\n    .replace(/<\\/p>/gi, '\\n\\n')                  // Convert paragraphs to double newlines\n    .replace(/<br\\s*\\/?>/gi, '\\n')                 // Convert breaks to newlines\n    .replace(/<\\/div>/gi, '\\n')                   // Convert div ends to newlines\n    .replace(/<\\/tr>/gi, '\\n')                    // Convert table row ends to newlines\n    .replace(/<\\/li>/gi, '\\n');                   // Convert list item ends to newlines\n\n  // Strip all remaining HTML tags\n  parsedBody = cleanHtml\n    .replace(/<[^>]*>/g, '')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/\\n\\s*\\n+/g, '\\n\\n')                // Normalize multiple newlines\n    .replace(/[ \\t]+/g, ' ')                      // Collapse multiple horizontal spaces\n    .trim();\n}\n\nreturn {\n  json: {\n    ticketId: email.messageId || email.uid || `email-${Date.now()}`,\n    source: \"Email\",\n    sender: senderEmail,\n    subject: email.subject || \"[No Subject]\",\n    body: parsedBody,\n    receivedAt: email.date || new Date().toISOString()\n  }\n};"
       },
       "id": "a18413b5-31ad-4cc2-9844-42b7a95015ff",
-      "name": "Format Email Ticket",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "name": "Parse Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         470,
         240
@@ -84,7 +44,7 @@
       "main": [
         [
           {
-            "node": "Format Email Ticket",
+            "node": "Parse Email Content",
             "type": "main",
             "index": 0
           }
@@ -100,3 +60,4 @@
   },
   "tags": []
 }
+

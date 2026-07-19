@@ -1,0 +1,44 @@
+[
+  {
+    "description": "Standard Plain Text Email",
+    "payload": {
+      "messageId": "<plain-text-email-12345@gmail.com>",
+      "uid": 101,
+      "date": "2026-07-19T10:00:00.000Z",
+      "subject": "Delay in delivery of order #98765",
+      "from": {
+        "value": [
+          {
+            "address": "customer.rajesh@gmail.com",
+            "name": "Rajesh Kumar"
+          }
+        ],
+        "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Rajesh Kumar</span> &lt;<a href=\"mailto:customer.rajesh@gmail.com\" class=\"mp_address_email\">customer.rajesh@gmail.com</a>&gt;</span>",
+        "text": "Rajesh Kumar <customer.rajesh@gmail.com>"
+      },
+      "text": "Hello Support Team,\n\nI ordered a table 5 days ago (Order #98765) and it has not arrived yet. Please check the tracking status. It was supposed to be delivered yesterday in Mumbai.\n\nThanks,\nRajesh",
+      "html": "<div dir=\"ltr\">Hello Support Team,<br><br>I ordered a table 5 days ago (Order #98765) and it has not arrived yet. Please check the tracking status. It was supposed to be delivered yesterday in Mumbai.<br><br>Thanks,<br>Rajesh</div>"
+    }
+  },
+  {
+    "description": "Rich HTML Only Email (text body is missing, requiring stripping)",
+    "payload": {
+      "messageId": "<html-only-email-67890@outlook.com>",
+      "uid": 102,
+      "date": "2026-07-19T10:15:30.000Z",
+      "subject": "Urgent: Failed Payment Refund Request",
+      "from": {
+        "value": [
+          {
+            "address": "priya.sharma@outlook.com",
+            "name": "Priya Sharma"
+          }
+        ],
+        "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Priya Sharma</span> &lt;<a href=\"mailto:priya.sharma@outlook.com\" class=\"mp_address_email\">priya.sharma@outlook.com</a>&gt;</span>",
+        "text": "Priya Sharma <priya.sharma@outlook.com>"
+      },
+      "text": "",
+      "html": "<html><head><style>body { font-family: Arial, sans-serif; color: #333333; } .highlight { color: #d9534f; font-weight: bold; }</style></head><body><div class=\"container\"><p>Dear Support,</p><p>My payment of <b>INR 1,200</b> failed at the counter in Bangalore, but the amount was deducted from my account. Please initiate a refund immediately.</p><p class=\"highlight\">Transaction ID: TXN88776655</p><br><p>Regards,<br>Priya</p></div></body></html>"
+    }
+  }
+]
