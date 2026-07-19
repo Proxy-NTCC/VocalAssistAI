@@ -30,6 +30,7 @@ This table records all incoming support tickets from email and WhatsApp, along w
 | **Urgency** | Single Select | Priority scale: `High`, `Medium`, `Low`. | Required |
 | **Location** | Single-line text | Customer's physical city, state, or region if extracted. | Optional |
 | **Draft Reply** | Long text | AI-generated reply in the customer's native language. | Optional |
+| **Similar Tickets** | Long text | Markdown-formatted list of similar historical tickets retrieved from vector search. | Optional |
 | **Status** | Single Select | Workflow routing status: `New`, `Investigating`, `Draft Ready`, `Replied`, `Closed`, `Failed`, `Processing`. | Defaults to `New` |
 | **Resync** | Checkbox | Manually trigger reprocessing of failed tickets. | Resets to unchecked by workflow |
 | **Error Log** | Long text | Detailed system stack traces or error summaries for failed sync runs. | Optional |
