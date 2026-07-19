@@ -37,6 +37,68 @@
         470,
         240
       ]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "options": {
+          "filterByFormula": "={Ticket ID} = '{{ $json.ticketId }}'",
+          "maxRecords": 1
+        }
+      },
+      "id": "d0f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b4",
+      "name": "Check Duplicate in Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        670,
+        140
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "vocalassist-airtable-creds",
+          "name": "VocalAssist Airtable Creds"
+        }
+      },
+      "settings": {
+        "alwaysOutputData": true
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByIndex"
+      },
+      "id": "e0f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b5",
+      "name": "Merge Payload & Duplicate Status",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        890,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "f0f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b6",
+      "name": "Filter Duplicate",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        1110,
+        240
+      ]
     }
   ],
   "connections": {
@@ -45,6 +107,44 @@
         [
           {
             "node": "Parse Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Email Content": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate in Airtable",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Payload & Duplicate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Merge Payload & Duplicate Status",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Payload & Duplicate Status": {
+      "main": [
+        [
+          {
+            "node": "Filter Duplicate",
             "type": "main",
             "index": 0
           }
@@ -60,4 +160,5 @@
   },
   "tags": []
 }
+
 
