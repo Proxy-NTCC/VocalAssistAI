@@ -14,7 +14,7 @@
         "documentId": "={{ $env.AIRTABLE_BASE_ID }}",
         "tableId": "={{ $env.AIRTABLE_TABLE_NAME }}",
         "watchRowFields": [
-          "Trigger Resync"
+          "Resync"
         ],
         "options": {}
       },
@@ -38,7 +38,7 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $json[\"fields\"][\"Trigger Resync\"] }}",
+              "value1": "={{ $json[\"fields\"][\"Resync\"] }}",
               "value2": true
             }
           ]
@@ -62,7 +62,7 @@
         "fieldsUi": {
           "fieldValues": [
             {
-              "fieldId": "Trigger Resync",
+              "fieldId": "Resync",
               "fieldValue": "false"
             },
             {
