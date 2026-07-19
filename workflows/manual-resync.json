@@ -90,6 +90,111 @@
           "name": "VocalAssist Airtable Creds"
         }
       }
+    },
+    {
+      "parameters": {
+        "workflowId": "ticket-topic-classification",
+        "options": {}
+      },
+      "id": "d61b9a9d-b4b3-4674-8b65-0a149b552fa4",
+      "name": "Execute Reprocess Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        910,
+        240
+      ],
+      "settings": {
+        "continueOnFail": true
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !($json.error) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "e61b9a9d-b4b3-4674-8b65-0a149b552fa5",
+      "name": "Check Execution Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1130,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "id": "={{ $items(\"Lock & Mark Processing\")[0].json.id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Draft Ready"
+            },
+            {
+              "fieldId": "Error Log",
+              "fieldValue": ""
+            }
+          ]
+        }
+      },
+      "id": "f61b9a9d-b4b3-4674-8b65-0a149b552fa6",
+      "name": "Update Status Success",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        140
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "vocalassist-airtable-creds",
+          "name": "VocalAssist Airtable Creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "id": "={{ $items(\"Lock & Mark Processing\")[0].json.id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Failed"
+            },
+            {
+              "fieldId": "Error Log",
+              "fieldValue": "={{ $json.error.message || \"Reprocessing execution failed with an unknown error.\" }}"
+            }
+          ]
+        }
+      },
+      "id": "f61b9a9d-b4b3-4674-8b65-0a149b552fa7",
+      "name": "Update Status Failure",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        340
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "vocalassist-airtable-creds",
+          "name": "VocalAssist Airtable Creds"
+        }
+      }
     }
   ],
   "connections": {
@@ -114,6 +219,46 @@
           }
         ]
       ]
+    },
+    "Lock & Mark Processing": {
+      "main": [
+        [
+          {
+            "node": "Execute Reprocess Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Reprocess Workflow": {
+      "main": [
+        [
+          {
+            "node": "Check Execution Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Execution Success": {
+      "main": [
+        [
+          {
+            "node": "Update Status Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Status Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -124,3 +269,4 @@
   },
   "tags": []
 }
+
