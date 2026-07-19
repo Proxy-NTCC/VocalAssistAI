@@ -1,0 +1,95 @@
+{
+  "id": "sub-llm-processor",
+  "name": "Sub-Workflow: LLM Processor",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert customer support routing assistant. Detect the primary language of the customer support ticket. Output a single JSON object matching this format: { \\\"languageCode\\\": \\\"two-letter ISO code\\\", \\\"languageName\\\": \\\"English name of language\\\", \\\"isCodeMixed\\\": true/false, \\\"confidence\\\": 1.0 }. Allowed ISO codes: en, hi, bn, te, mr, ta, gu, ur, kn, ml, pa, or, as. For Romanized Hindi/Hinglish or code-mixed input, set languageCode to 'hi' and isCodeMixed to true.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body }}\"\n    }\n  ],\n  \"max_tokens\": 100,\n  \"temperature\": 0\n}"
+      },
+      "id": "b1f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b2",
+      "name": "OpenAI Language Detector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        470,
+        240
+      ],
+      "settings": {
+        "continueOnFail": true
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json;\n\n// 1. Check for API-level call failures\nif (response.error || !response.choices || response.choices.length === 0) {\n  return {\n    json: {\n      languageCode: \"en\",\n      languageName: \"English\",\n      isCodeMixed: false,\n      confidence: 0.0,\n      fallbackReason: response.error?.message || \"API response structure was missing choices.\"\n    }\n  };\n}\n\n// 2. Parse text content from response\nlet responseText = \"\";\ntry {\n  responseText = response.choices[0].message.content.trim();\n} catch (e) {\n  return {\n    json: {\n      languageCode: \"en\",\n      languageName: \"English\",\n      isCodeMixed: false,\n      confidence: 0.0,\n      fallbackReason: \"Failed to extract content field from API structure.\"\n    }\n  };\n}\n\n// 3. Parse content string as JSON\nlet result;\ntry {\n  result = JSON.parse(responseText);\n} catch (e) {\n  return {\n    json: {\n      languageCode: \"en\",\n      languageName: \"English\",\n      isCodeMixed: false,\n      confidence: 0.0,\n      fallbackReason: \"Model response was not valid JSON: \" + responseText\n    }\n  };\n}\n\n// 4. Validate output and enforce English fallback for unhandled tags\nconst allowedCodes = [\"en\", \"hi\", \"bn\", \"te\", \"mr\", \"ta\", \"gu\", \"ur\", \"kn\", \"ml\", \"pa\", \"or\", \"as\"];\nlet finalCode = (result.languageCode || \"en\").toLowerCase().trim();\nlet finalName = result.languageName || \"English\";\n\nif (!allowedCodes.includes(finalCode)) {\n  finalCode = \"en\";\n  finalName = \"English\";\n}\n\nreturn {\n  json: {\n    languageCode: finalCode,\n    languageName: finalName,\n    isCodeMixed: !!result.isCodeMixed,\n    confidence: Number(result.confidence) || 0.0\n  }\n};\n"
+      },
+      "id": "c1f1a2b3-c4d5-4e6f-a7b8-c9d0e1f2a3b3",
+      "name": "Parse Language Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        690,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Language Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Language Detector": {
+      "main": [
+        [
+          {
+            "node": "Parse Language Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "bc056dbf-fdf3-4c91-9e75-9c9f69747a85",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
