@@ -1,0 +1,326 @@
+{
+  "name": "AI Draft Reply Generation (Gemini) with Error Handling",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-draft-reply",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        50,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"text\": \"You are a multilingual customer support AI. Draft a professional response to the customer ticket using the same language they wrote in. Reference similar past tickets if provided.\\n\\nTicket Issue: \" + $json.ticket_text + \"\\nSimilar Tickets: \" + JSON.stringify($json.similar_tickets || [])\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "gemini-draft-reply",
+      "name": "Google Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "geminiApiKey",
+          "name": "Gemini API Key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "ai_draft_reply",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "attach-reply",
+      "name": "Attach Reply to Ticket",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        850,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e936b28a-7e18-40be-bd6e-1f2a36b33535",
+              "name": "attemptCount",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "init-attempt-count",
+      "name": "Initialize Attempt Count",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        250,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-error-cond",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-for-error",
+      "name": "Check for Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 3.2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "$json.attemptCount = ($json.attemptCount || 0) + 1;\nreturn $json;"
+      },
+      "id": "increment-count",
+      "name": "Increment Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-limit-cond",
+              "leftValue": "={{ $json.attemptCount }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-retry-limit",
+      "name": "Check Retry Limit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 3.2,
+      "position": [
+        1050,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://monitoring.internal.example.com/api/logs",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"level\": \"warning\",\n  \"workflow\": \"{{ $workflow.name }}\",\n  \"status\": \"Retrying\",\n  \"attemptCount\": {{ $json.attemptCount }},\n  \"error_message\": \"{{ $json.error.message }}\",\n  \"node\": \"{{ $json.execution.lastNodeExecuted }}\"\n}",
+        "options": {}
+      },
+      "id": "log-retry",
+      "name": "Log Retry to Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "wait-node",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1450,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://monitoring.internal.example.com/api/logs",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"level\": \"error\",\n  \"workflow\": \"{{ $workflow.name }}\",\n  \"status\": \"Final Failure\",\n  \"attemptCount\": {{ $json.attemptCount }},\n  \"error_message\": \"{{ $json.error.message }}\",\n  \"node\": \"{{ $json.execution.lastNodeExecuted }}\"\n}",
+        "options": {}
+      },
+      "id": "log-final-failure",
+      "name": "Log Final Failure to Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        250
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize Attempt Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Attempt Count": {
+      "main": [
+        [
+          {
+            "node": "Google Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Check for Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Error": {
+      "main": [
+        [
+          {
+            "node": "Increment Count",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Attach Reply to Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Count": {
+      "main": [
+        [
+          {
+            "node": "Check Retry Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Retry Limit": {
+      "main": [
+        [
+          {
+            "node": "Log Retry to Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Final Failure to Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Retry to Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Google Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "versionId": "c8f2a1b9-3995-467f-94ad-737c09d5eb66"
+}

@@ -1,0 +1,239 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e936b28a-7e18-40be-bd6e-1f2a36b33535",
+              "name": "attemptCount",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "31b199df-ef00-4786-81a6-89d2c3dfcc12",
+      "name": "Initialize Attempt Count",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/status/500",
+        "options": {}
+      },
+      "id": "5170d494-df72-4683-9972-0be40a6b5791",
+      "name": "Action Node (e.g. API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "3f7ea5e8-54c3-4d64-8806-03c09b626e95",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "848bb24c-9f7b-40f4-bad9-07b99c75fb63",
+      "name": "Check for Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 3.2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "$json.attemptCount = ($json.attemptCount || 0) + 1;\nreturn $json;"
+      },
+      "id": "bdfd807f-e25c-4da4-bc94-cf5600d3d5f3",
+      "name": "Increment Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "787c88a8-3603-4c91-9e8c-f09d8d641179",
+              "leftValue": "={{ $json.attemptCount }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "180baf6a-c287-4d68-af9a-c9d293883a30",
+      "name": "Check Retry Limit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 3.2,
+      "position": [
+        1340,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "ff992a5d-4f7f-442a-a92c-e1ce1c7a82b9",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        -60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b1b01c10-09a1-4fc3-a279-99436fc7e6f8",
+      "name": "Success Path",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        460
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8bb986a1-396a-4b95-bd55-a130f1469be4",
+      "name": "Final Failure Path",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Initialize Attempt Count": {
+      "main": [
+        [
+          {
+            "node": "Action Node (e.g. API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Node (e.g. API)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Check for Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Error": {
+      "main": [
+        [
+          {
+            "node": "Increment Count",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Count": {
+      "main": [
+        [
+          {
+            "node": "Check Retry Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Retry Limit": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Failure Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Action Node (e.g. API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
