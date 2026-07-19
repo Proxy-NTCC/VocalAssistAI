@@ -1,0 +1,38 @@
+[
+  {
+    "scenario": "Successful Resync Trigger",
+    "description": "User checks Resync = true on a failed ticket, and the reprocess sub-workflow executes successfully.",
+    "payload": {
+      "id": "rec1234567890abc",
+      "createdTime": "2026-07-19T10:00:00.000Z",
+      "fields": {
+        "Ticket ID": "billing-hi-failed",
+        "Source": "Email",
+        "Customer Identifier": "customer.hindi@gmail.com",
+        "Subject": "भुगतान की समस्या",
+        "Raw Message": "मेरा payment कट गया लेकिन order confirm नहीं हुआ।",
+        "Status": "Failed",
+        "Resync": true,
+        "Error Log": "Timeout connecting to OpenAI during initial ingestion."
+      }
+    }
+  },
+  {
+    "scenario": "Ignored Trigger (Resync Checkbox False)",
+    "description": "Airtable triggers an update event, but Resync is false. The workflow should stop at the Filter node.",
+    "payload": {
+      "id": "rec1234567890abc",
+      "createdTime": "2026-07-19T10:00:00.000Z",
+      "fields": {
+        "Ticket ID": "billing-hi-failed",
+        "Source": "Email",
+        "Customer Identifier": "customer.hindi@gmail.com",
+        "Subject": "भुगतान की समस्या",
+        "Raw Message": "मेरा payment कट गया लेकिन order confirm नहीं हुआ।",
+        "Status": "Failed",
+        "Resync": false,
+        "Error Log": "Timeout connecting to OpenAI during initial ingestion."
+      }
+    }
+  }
+]
