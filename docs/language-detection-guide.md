@@ -61,3 +61,24 @@ If the OpenAI API fails (due to rate limits, authentication failure, network tim
 - **Safe Fallback:** Inject standard fallback variables (`languageCode: "en"`, `languageName: "English"`) to keep the workflow moving downstream to the default queue.
 - **Success Mapping:** On a clean execution, the output will contain `error: false` and `errorMessage: ""`.
 
+---
+
+## 4. Running Language Detection Unit Tests
+
+To verify detection accuracy across scripts and code-mixed formats, you can run tests directly inside n8n:
+
+1. Open `workflows/sub-llm-processor.json` inside the n8n UI.
+2. Select one of the test cases from [language-detection-samples.json](file:///C:/Users/Hp/Desktop/VocalAssistAI/tests/language-detection-samples.json) (e.g. Hinglish or Bengali).
+3. Pin the test payload onto the **Execute Workflow Trigger** node as input data:
+   ```json
+   {
+     "body": "Mera parcel kab tak aayega? Delivery agent ka number switch off aa raha hai..."
+   }
+   ```
+4. Click **Execute Workflow**.
+5. Observe the outputs of the **Parse Language Response** node and verify they match the expected test definitions:
+   - Hinglish input should successfully resolve to `"languageCode": "hi"` with `"isCodeMixed": true`.
+   - Bengali input should resolve to `"languageCode": "bn"` with `"isCodeMixed": false`.
+   - Tamil input should resolve to `"languageCode": "ta"` with `"isCodeMixed": false`.
+
+

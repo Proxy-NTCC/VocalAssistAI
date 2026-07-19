@@ -1,0 +1,50 @@
+[
+  {
+    "id": "lang-en",
+    "language": "English",
+    "ticketText": "Hi support, my order #10023 hasn't shipped yet. Can you please check the estimated delivery date?",
+    "expectedLanguageCode": "en",
+    "expectedLanguageName": "English",
+    "isCodeMixed": false
+  },
+  {
+    "id": "lang-hi-devanagari",
+    "language": "Hindi (Devanagari)",
+    "ticketText": "मुझे जो टी-शर्ट मिली है उसका रंग अलग है और साइज भी छोटा है। कृपया इसे वापस लें।",
+    "expectedLanguageCode": "hi",
+    "expectedLanguageName": "Hindi",
+    "isCodeMixed": false
+  },
+  {
+    "id": "lang-hinglish",
+    "language": "Hinglish (Roman Hindi)",
+    "ticketText": "Mera parcel kab tak aayega? Delivery agent ka number switch off aa raha hai, please jaldi check karo.",
+    "expectedLanguageCode": "hi",
+    "expectedLanguageName": "Hindi",
+    "isCodeMixed": true
+  },
+  {
+    "id": "lang-tamil",
+    "language": "Tamil",
+    "ticketText": "கடைக்கு சென்ற போது ஊழியர்கள் தவறாக பேசினார்கள். மிகவும் மோசமான சேவை.",
+    "expectedLanguageCode": "ta",
+    "expectedLanguageName": "Tamil",
+    "isCodeMixed": false
+  },
+  {
+    "id": "lang-bengali",
+    "language": "Bengali",
+    "ticketText": "আমি এই প্রোডাক্টটি রিটার্ন করতে চাই। রিফান্ড কবে পাবো একটু জানাবেন?",
+    "expectedLanguageCode": "bn",
+    "expectedLanguageName": "Bengali",
+    "isCodeMixed": false
+  },
+  {
+    "id": "lang-telugu",
+    "language": "Telugu",
+    "ticketText": "నా అకౌంట్ లోగిన్ అవ్వడం లేదు. పాస్‌వర్డ్ రీసెట్ లింక్ పంపండి.",
+    "expectedLanguageCode": "te",
+    "expectedLanguageName": "Telugu",
+    "isCodeMixed": false
+  }
+]
