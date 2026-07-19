@@ -44,7 +44,9 @@ let state = {
   airtableBaseId: '',
   templates: {}, // Current loaded templates (key: Topic)
   selectedTopic: null,
-  airtableRecordsMap: {} // Map Topic -> Airtable Record ID for updates
+  airtableRecordsMap: {}, // Map Topic -> Airtable Record ID for updates
+  dashboardFilter: 'all',
+  dashboardRuns: [] // Store fetched logs
 };
 
 // DOM Elements
@@ -70,6 +72,18 @@ const saveStatusMsg = document.getElementById('save-status-msg');
 const toast = document.getElementById('toast');
 const placeholderChips = document.querySelectorAll('.chip');
 
+// Tab controls
+const tabTemplates = document.getElementById('tab-templates');
+const tabDashboard = document.getElementById('tab-dashboard');
+const viewTemplates = document.getElementById('view-templates');
+const viewDashboard = document.getElementById('view-dashboard');
+
+// Dashboard logs controls
+const logsTbody = document.getElementById('logs-tbody');
+const dashboardEmptyState = document.getElementById('dashboard-empty-state');
+const btnRefreshDashboard = document.getElementById('btn-refresh-dashboard');
+const filterPills = document.querySelectorAll('.filter-pill');
+
 // Initialize App
 function init() {
   // Try loading credentials and mode from LocalStorage
@@ -92,6 +106,7 @@ function init() {
 
   toggleIntegrationModeView();
   loadTemplates();
+  loadDashboardLogs(); // Initialize dashboard runs
   setupEventListeners();
 }
 
@@ -401,6 +416,7 @@ function setupEventListeners() {
     localStorage.setItem('vocalassist_sandbox_mode', state.sandboxMode);
     toggleIntegrationModeView();
     loadTemplates();
+    loadDashboardLogs();
   });
 
   // Connect Button
@@ -418,6 +434,7 @@ function setupEventListeners() {
     
     localStorage.setItem('vocalassist_airtable_creds', JSON.stringify({ pat, baseId }));
     loadTemplates();
+    loadDashboardLogs();
   });
 
   // Real-time counter bindings
@@ -445,6 +462,225 @@ function setupEventListeners() {
       renderSidebar();
     }
   });
+
+  // Tab buttons bindings
+  tabTemplates.addEventListener('click', () => switchView('templates'));
+  tabDashboard.addEventListener('click', () => switchView('dashboard'));
+
+  // Dashboard refresh
+  btnRefreshDashboard.addEventListener('click', () => loadDashboardLogs());
+
+  // Filter pills binding
+  filterPills.forEach(pill => {
+    pill.addEventListener('click', (e) => {
+      filterPills.forEach(p => p.classList.remove('active'));
+      e.target.classList.add('active');
+      state.dashboardFilter = e.target.dataset.filter;
+      renderDashboardLogs();
+    });
+  });
+}
+
+// Mock runs database (default seed for local storage)
+const MOCK_RUNS = [
+  {
+    id: "rec001",
+    fields: {
+      "Ticket ID": "email-2026-101",
+      "Source": "Email",
+      "Topic": "Billing & Payment",
+      "Created Time": new Date(Date.now() - 3600000).toISOString(),
+      "Status": "Draft Ready",
+      "Error Log": ""
+    }
+  },
+  {
+    id: "rec002",
+    fields: {
+      "Ticket ID": "whatsapp-2026-102",
+      "Source": "WhatsApp",
+      "Topic": "Delivery & Shipping",
+      "Created Time": new Date(Date.now() - 1800000).toISOString(),
+      "Status": "Processing",
+      "Error Log": ""
+    }
+  },
+  {
+    id: "rec003",
+    fields: {
+      "Ticket ID": "email-2026-103",
+      "Source": "Email",
+      "Topic": "Product Issue",
+      "Created Time": new Date(Date.now() - 7200000).toISOString(),
+      "Status": "Failed",
+      "Error Log": "Timeout occurred while trying to connect to OpenAI completion service. Request payload dumped sk-BC123xyz789012345678901234567890123456789012345. Connection returned ETIMEDOUT."
+    }
+  },
+  {
+    id: "rec004",
+    fields: {
+      "Ticket ID": "email-2026-104",
+      "Source": "Email",
+      "Topic": "Account & Login",
+      "Created Time": new Date(Date.now() - 86400000).toISOString(),
+      "Status": "Closed",
+      "Error Log": ""
+    }
+  }
+];
+
+// Load dashboard runs
+async function loadDashboardLogs() {
+  if (state.sandboxMode) {
+    const savedRuns = localStorage.getItem('vocalassist_sandbox_runs');
+    if (savedRuns) {
+      try {
+        state.dashboardRuns = JSON.parse(savedRuns);
+      } catch (e) {
+        state.dashboardRuns = JSON.parse(JSON.stringify(MOCK_RUNS));
+      }
+    } else {
+      state.dashboardRuns = JSON.parse(JSON.stringify(MOCK_RUNS));
+      localStorage.setItem('vocalassist_sandbox_runs', JSON.stringify(MOCK_RUNS));
+    }
+    renderDashboardLogs();
+  } else {
+    // Live Airtable log pull
+    if (!state.airtablePAT || !state.airtableBaseId) {
+      state.dashboardRuns = [];
+      renderDashboardLogs();
+      return;
+    }
+    
+    // Sort by Created Time descending
+    const url = `https://api.airtable.com/v0/${state.airtableBaseId}/Tickets?maxRecords=30&sort%5B0%5D%5Bfield%5D=Created+Time&sort%5B0%5D%5Bdirection%5D=desc`;
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${state.airtablePAT}`
+        }
+      });
+      if (!response.ok) throw new Error(`Failed to fetch logs: Status ${response.status}`);
+      const data = await response.json();
+      state.dashboardRuns = data.records || [];
+      renderDashboardLogs();
+    } catch (e) {
+      console.error(e);
+      showStatusNotification(`Log Pull Error: ${e.message}`, 'error');
+      state.dashboardRuns = [];
+      renderDashboardLogs();
+    }
+  }
+}
+
+// Render runs to table
+function renderDashboardLogs() {
+  logsTbody.innerHTML = '';
+  const filter = state.dashboardFilter;
+  
+  const filtered = state.dashboardRuns.filter(run => {
+    if (!run || !run.fields) return false;
+    if (filter === 'all') return true;
+    return run.fields.Status === filter;
+  });
+
+  if (filtered.length === 0) {
+    dashboardEmptyState.classList.remove('hidden');
+    document.querySelector('.logs-table').style.display = 'none';
+    return;
+  }
+
+  dashboardEmptyState.classList.add('hidden');
+  document.querySelector('.logs-table').style.display = 'table';
+
+  filtered.forEach(run => {
+    const recordId = run.id;
+    const ticketId = run.fields["Ticket ID"] || 'Unknown ID';
+    const source = run.fields.Source || 'Email';
+    const topic = run.fields.Topic || 'Unclassified';
+    const rawTime = run.fields["Created Time"] || run.createdTime || '';
+    const status = run.fields.Status || 'New';
+    const errorLog = run.fields["Error Log"] || '';
+
+    // Class for status pill
+    let statusClass = 'new';
+    if (status === 'Processing') statusClass = 'processing';
+    else if (status === 'Draft Ready') statusClass = 'draft-ready';
+    else if (status === 'Failed') statusClass = 'failed';
+    else if (status === 'Closed' || status === 'Replied') statusClass = 'closed';
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><strong>${ticketId}</strong></td>
+      <td>${source}</td>
+      <td>${topic}</td>
+      <td>${formatDateTime(rawTime)}</td>
+      <td><span class="status-pill ${statusClass}">${status}</span></td>
+      <td>
+        ${status === 'Failed' && errorLog ? `<button type="button" class="btn btn-secondary btn-sm btn-view-error" data-id="${recordId}">⚠️ View Error</button>` : '—'}
+      </td>
+    `;
+    
+    logsTbody.appendChild(row);
+
+    // If failed and has logs, add hidden trace details row
+    if (status === 'Failed' && errorLog) {
+      const errRow = document.createElement('tr');
+      errRow.id = `err-row-${recordId}`;
+      errRow.className = 'error-details-row hidden';
+      errRow.innerHTML = `
+        <td colspan="6">
+          <div class="error-trace-box"><strong>Stack Trace Diagnostics:</strong>\n${errorLog}</div>
+        </td>
+      `;
+      logsTbody.appendChild(errRow);
+    }
+  });
+
+  // Re-bind view error events
+  document.querySelectorAll('.btn-view-error').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const rid = e.target.dataset.id;
+      toggleErrorTrace(rid);
+    });
+  });
+}
+
+function toggleErrorTrace(recordId) {
+  const errRow = document.getElementById(`err-row-${recordId}`);
+  if (errRow) {
+    errRow.classList.toggle('hidden');
+  }
+}
+
+// Helper to format ISO date string
+function formatDateTime(isoString) {
+  if (!isoString) return 'No timestamp';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch (e) {
+    return isoString;
+  }
+}
+
+// Switch between view tabs
+function switchView(targetTab) {
+  if (targetTab === 'templates') {
+    tabTemplates.classList.add('active');
+    tabDashboard.classList.remove('active');
+    viewTemplates.classList.add('active');
+    viewDashboard.classList.remove('active');
+    loadTemplates();
+  } else if (targetTab === 'dashboard') {
+    tabDashboard.classList.add('active');
+    tabTemplates.classList.remove('active');
+    viewDashboard.classList.add('active');
+    viewTemplates.classList.remove('active');
+    loadDashboardLogs();
+  }
 }
 
 // Fire loading

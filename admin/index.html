@@ -24,9 +24,15 @@
         <span class="logo-icon">✨</span>
         <div class="logo-text">
           <h1>VocalAssistAI</h1>
-          <span class="sub-text">Prompt Template Admin</span>
+          <span class="sub-text">Admin Console</span>
         </div>
       </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button type="button" id="tab-templates" class="tab-btn active">📝 Templates</button>
+        <button type="button" id="tab-dashboard" class="tab-btn">📊 Status Dashboard</button>
+      </nav>
       
       <!-- Integration Mode Control -->
       <div class="mode-selector-card">
@@ -45,84 +51,130 @@
       </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="app-workspace">
-      <!-- Sidebar - Topic Selector -->
-      <aside class="sidebar">
-        <h3>Categories</h3>
-        <ul id="topic-list" class="topic-menu">
-          <!-- Populated dynamically -->
-          <li class="skeleton-item"></li>
-          <li class="skeleton-item"></li>
-          <li class="skeleton-item"></li>
-        </ul>
-      </aside>
+    <!-- Workspace Views -->
+    <div id="view-templates" class="workspace-view active">
+      <!-- Main Workspace -->
+      <main class="app-workspace">
+        <!-- Sidebar - Topic Selector -->
+        <aside class="sidebar">
+          <h3>Categories</h3>
+          <ul id="topic-list" class="topic-menu">
+            <!-- Populated dynamically -->
+            <li class="skeleton-item"></li>
+            <li class="skeleton-item"></li>
+            <li class="skeleton-item"></li>
+          </ul>
+        </aside>
 
-      <!-- Main Editor Panel -->
-      <section class="editor-panel">
-        <div id="no-selection-state" class="editor-state active">
-          <div class="empty-state-content">
-            <span class="empty-icon">📝</span>
-            <h2>No Category Selected</h2>
-            <p>Select a ticket category from the sidebar to customize its system instructions and reply draft prompt template.</p>
-          </div>
-        </div>
-
-        <div id="editor-active-state" class="editor-state">
-          <div class="editor-header">
-            <div>
-              <h2 id="current-topic-title">Billing & Payment</h2>
-              <p class="topic-desc">Customize replies sent for payments, refund requests, or invoice questions.</p>
-            </div>
-            <div class="active-badge-wrapper">
-              <label class="status-toggle-label">
-                <input type="checkbox" id="template-active-toggle" checked>
-                <span class="status-badge">Active</span>
-              </label>
+        <!-- Main Editor Panel -->
+        <section class="editor-panel">
+          <div id="no-selection-state" class="editor-state active">
+            <div class="empty-state-content">
+              <span class="empty-icon">📝</span>
+              <h2>No Category Selected</h2>
+              <p>Select a ticket category from the sidebar to customize its system instructions and reply draft prompt template.</p>
             </div>
           </div>
 
-          <form id="template-editor-form" class="editor-form">
-            <!-- System Instructions Field -->
-            <div class="form-group">
-              <label for="system-instructions">
-                System Instructions
-                <span class="tooltip" data-tip="Defines the behavior, role, constraints, and tone of the AI agent for this specific topic.">ℹ️</span>
-              </label>
-              <textarea id="system-instructions" rows="6" placeholder="Describe the AI agent's role and rules for this category..."></textarea>
-              <span class="char-counter"><span id="sys-char-count">0</span> chars</span>
+          <div id="editor-active-state" class="editor-state">
+            <div class="editor-header">
+              <div>
+                <h2 id="current-topic-title">Billing & Payment</h2>
+                <p class="topic-desc">Customize replies sent for payments, refund requests, or invoice questions.</p>
+              </div>
+              <div class="active-badge-wrapper">
+                <label class="status-toggle-label">
+                  <input type="checkbox" id="template-active-toggle" checked>
+                  <span class="status-badge">Active</span>
+                </label>
+              </div>
             </div>
 
-            <!-- User Prompt Template Field -->
-            <div class="form-group">
-              <label for="user-prompt-template">
-                User Prompt Template
-                <span class="tooltip" data-tip="The prompt template sent containing placeholders that resolve to actual ticket parameters.">ℹ️</span>
-              </label>
-              
-              <!-- Placeholder helper chips -->
-              <div class="placeholder-chips">
-                <span class="chip-label">Placeholders (Click to insert):</span>
-                <button type="button" class="chip" data-insert="{{RawMessage}}">Raw Message</button>
-                <button type="button" class="chip" data-insert="{{Translation}}">Translation</button>
-                <button type="button" class="chip" data-insert="{{Language}}">Language</button>
-                <button type="button" class="chip" data-insert="{{SimilarTickets}}">Similar Tickets</button>
+            <form id="template-editor-form" class="editor-form">
+              <!-- System Instructions Field -->
+              <div class="form-group">
+                <label for="system-instructions">
+                  System Instructions
+                  <span class="tooltip" data-tip="Defines the behavior, role, constraints, and tone of the AI agent for this specific topic.">ℹ️</span>
+                </label>
+                <textarea id="system-instructions" rows="6" placeholder="Describe the AI agent's role and rules for this category..."></textarea>
+                <span class="char-counter"><span id="sys-char-count">0</span> chars</span>
               </div>
 
-              <textarea id="user-prompt-template" rows="8" placeholder="Draft the prompt layout. Use placeholders like {{RawMessage}}..."></textarea>
-              <span class="char-counter"><span id="user-char-count">0</span> chars</span>
-            </div>
+              <!-- User Prompt Template Field -->
+              <div class="form-group">
+                <label for="user-prompt-template">
+                  User Prompt Template
+                  <span class="tooltip" data-tip="The prompt template sent containing placeholders that resolve to actual ticket parameters.">ℹ️</span>
+                </label>
+                
+                <!-- Placeholder helper chips -->
+                <div class="placeholder-chips">
+                  <span class="chip-label">Placeholders (Click to insert):</span>
+                  <button type="button" class="chip" data-insert="{{RawMessage}}">Raw Message</button>
+                  <button type="button" class="chip" data-insert="{{Translation}}">Translation</button>
+                  <button type="button" class="chip" data-insert="{{Language}}">Language</button>
+                  <button type="button" class="chip" data-insert="{{SimilarTickets}}">Similar Tickets</button>
+                </div>
 
-            <!-- Control Actions -->
-            <div class="editor-actions">
-              <span id="save-status-msg" class="status-msg"></span>
-              <button type="button" id="btn-reset-default" class="btn btn-danger">Reset to Seed Default</button>
-              <button type="submit" id="btn-save-template" class="btn btn-primary">Save Template</button>
+                <textarea id="user-prompt-template" rows="8" placeholder="Draft the prompt layout. Use placeholders like {{RawMessage}}..."></textarea>
+                <span class="char-counter"><span id="user-char-count">0</span> chars</span>
+              </div>
+
+              <!-- Control Actions -->
+              <div class="editor-actions">
+                <span id="save-status-msg" class="status-msg"></span>
+                <button type="button" id="btn-reset-default" class="btn btn-danger">Reset to Seed Default</button>
+                <button type="submit" id="btn-save-template" class="btn btn-primary">Save Template</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="view-dashboard" class="workspace-view">
+      <main class="dashboard-container">
+        <!-- Filter Controls & Actions -->
+        <section class="dashboard-header-panel">
+          <div class="filter-group">
+            <button type="button" class="filter-pill active" data-filter="all">All Runs</button>
+            <button type="button" class="filter-pill" data-filter="Processing">Processing</button>
+            <button type="button" class="filter-pill" data-filter="Draft Ready">Ready Drafts</button>
+            <button type="button" class="filter-pill" data-filter="Failed">Failed (Errors)</button>
+          </div>
+          <button type="button" id="btn-refresh-dashboard" class="btn btn-secondary">🔄 Refresh Log</button>
+        </section>
+
+        <!-- Log List Grid -->
+        <section class="dashboard-grid">
+          <div class="logs-table-wrapper">
+            <table class="logs-table">
+              <thead>
+                <tr>
+                  <th>Ticket ID</th>
+                  <th>Source</th>
+                  <th>Topic</th>
+                  <th>Received Time</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="logs-tbody">
+                <!-- Log Rows inserted dynamically -->
+              </tbody>
+            </table>
+            
+            <div id="dashboard-empty-state" class="dashboard-empty hidden">
+              <span class="empty-icon">📂</span>
+              <h3>No workflow logs found</h3>
+              <p>Execute n8n ingestion workflows to log run items here.</p>
             </div>
-          </form>
-        </div>
-      </section>
-    </main>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <!-- Notification Toast -->
