@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VocalAssistAI - Prompt Template Admin</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Background decorations -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-icon">✨</span>
+        <div class="logo-text">
+          <h1>VocalAssistAI</h1>
+          <span class="sub-text">Prompt Template Admin</span>
+        </div>
+      </div>
+      
+      <!-- Integration Mode Control -->
+      <div class="mode-selector-card">
+        <div class="mode-switch">
+          <label class="switch-label" for="sandbox-mode-toggle">Sandbox Mode (Local Offline)</label>
+          <div class="toggle-wrapper">
+            <input type="checkbox" id="sandbox-mode-toggle" checked>
+            <span class="slider"></span>
+          </div>
+        </div>
+        <div id="airtable-creds-box" class="airtable-creds-container hidden">
+          <input type="password" id="airtable-pat" placeholder="Airtable Access Token (PAT)">
+          <input type="text" id="airtable-base-id" placeholder="Base ID (appXXXXXX)">
+          <button id="btn-connect" class="btn btn-secondary">Connect</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-workspace">
+      <!-- Sidebar - Topic Selector -->
+      <aside class="sidebar">
+        <h3>Categories</h3>
+        <ul id="topic-list" class="topic-menu">
+          <!-- Populated dynamically -->
+          <li class="skeleton-item"></li>
+          <li class="skeleton-item"></li>
+          <li class="skeleton-item"></li>
+        </ul>
+      </aside>
+
+      <!-- Main Editor Panel -->
+      <section class="editor-panel">
+        <div id="no-selection-state" class="editor-state active">
+          <div class="empty-state-content">
+            <span class="empty-icon">📝</span>
+            <h2>No Category Selected</h2>
+            <p>Select a ticket category from the sidebar to customize its system instructions and reply draft prompt template.</p>
+          </div>
+        </div>
+
+        <div id="editor-active-state" class="editor-state">
+          <div class="editor-header">
+            <div>
+              <h2 id="current-topic-title">Billing & Payment</h2>
+              <p class="topic-desc">Customize replies sent for payments, refund requests, or invoice questions.</p>
+            </div>
+            <div class="active-badge-wrapper">
+              <label class="status-toggle-label">
+                <input type="checkbox" id="template-active-toggle" checked>
+                <span class="status-badge">Active</span>
+              </label>
+            </div>
+          </div>
+
+          <form id="template-editor-form" class="editor-form">
+            <!-- System Instructions Field -->
+            <div class="form-group">
+              <label for="system-instructions">
+                System Instructions
+                <span class="tooltip" data-tip="Defines the behavior, role, constraints, and tone of the AI agent for this specific topic.">ℹ️</span>
+              </label>
+              <textarea id="system-instructions" rows="6" placeholder="Describe the AI agent's role and rules for this category..."></textarea>
+              <span class="char-counter"><span id="sys-char-count">0</span> chars</span>
+            </div>
+
+            <!-- User Prompt Template Field -->
+            <div class="form-group">
+              <label for="user-prompt-template">
+                User Prompt Template
+                <span class="tooltip" data-tip="The prompt template sent containing placeholders that resolve to actual ticket parameters.">ℹ️</span>
+              </label>
+              
+              <!-- Placeholder helper chips -->
+              <div class="placeholder-chips">
+                <span class="chip-label">Placeholders (Click to insert):</span>
+                <button type="button" class="chip" data-insert="{{RawMessage}}">Raw Message</button>
+                <button type="button" class="chip" data-insert="{{Translation}}">Translation</button>
+                <button type="button" class="chip" data-insert="{{Language}}">Language</button>
+                <button type="button" class="chip" data-insert="{{SimilarTickets}}">Similar Tickets</button>
+              </div>
+
+              <textarea id="user-prompt-template" rows="8" placeholder="Draft the prompt layout. Use placeholders like {{RawMessage}}..."></textarea>
+              <span class="char-counter"><span id="user-char-count">0</span> chars</span>
+            </div>
+
+            <!-- Control Actions -->
+            <div class="editor-actions">
+              <span id="save-status-msg" class="status-msg"></span>
+              <button type="button" id="btn-reset-default" class="btn btn-danger">Reset to Seed Default</button>
+              <button type="submit" id="btn-save-template" class="btn btn-primary">Save Template</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast">Template saved successfully!</div>
+
+  <!-- Script -->
+  <script src="admin.js"></script>
+</body>
+</html>
