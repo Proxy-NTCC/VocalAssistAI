@@ -54,9 +54,10 @@ These examples are embedded within the prompt context to guide classification ac
 
 ---
 
-## 3. Graceful Error Handling (Fallback Router)
+## 3. Graceful Error Handling & API Exceptions
 
-If the OpenAI API fails (rate limits, key exhaustion, or socket timeout), a JavaScript parsing block captures the execution status:
-- If an API error block is detected, the pipeline automatically intercepts the failure.
-- It injects the fallback: `languageCode: "en"`, `languageName: "English"`.
-- This ensures that processing is never blocked, and failed tickets are safely routed to the default support queue in Airtable.
+If the OpenAI API fails (due to rate limits, authentication failure, network timeouts, or malformed JSON output from the model), the `Parse Language Response` node intercepts the exception:
+- **Error Flagging:** Returns `error: true` and the specific message in `errorMessage` (e.g. `"Model output was not valid JSON..."` or `"connect ETIMEDOUT"`).
+- **Safe Fallback:** Inject standard fallback variables (`languageCode: "en"`, `languageName: "English"`) to keep the workflow moving downstream to the default queue.
+- **Success Mapping:** On a clean execution, the output will contain `error: false` and `errorMessage: ""`.
+
