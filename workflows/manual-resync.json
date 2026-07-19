@@ -1,0 +1,126 @@
+{
+  "id": "manual-resync",
+  "name": "Manual Ticket Resync Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": "={{ $env.AIRTABLE_BASE_ID }}",
+        "tableId": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "watchRowFields": [
+          "Trigger Resync"
+        ],
+        "options": {}
+      },
+      "id": "a61b9a9d-b4b3-4674-8b65-0a149b552fa1",
+      "name": "Airtable Trigger Resync",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        240
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "vocalassist-airtable-creds",
+          "name": "VocalAssist Airtable Creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json[\"fields\"][\"Trigger Resync\"] }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "b61b9a9d-b4b3-4674-8b65-0a149b552fa2",
+      "name": "Filter Resync True",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        470,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "={{ $env.AIRTABLE_BASE_ID }}",
+        "table": "={{ $env.AIRTABLE_TABLE_NAME }}",
+        "id": "={{ $json.id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Trigger Resync",
+              "fieldValue": "false"
+            },
+            {
+              "fieldId": "Status",
+              "fieldValue": "Processing"
+            },
+            {
+              "fieldId": "Error Log",
+              "fieldValue": ""
+            }
+          ]
+        }
+      },
+      "id": "c61b9a9d-b4b3-4674-8b65-0a149b552fa3",
+      "name": "Lock & Mark Processing",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        690,
+        240
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "vocalassist-airtable-creds",
+          "name": "VocalAssist Airtable Creds"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Airtable Trigger Resync": {
+      "main": [
+        [
+          {
+            "node": "Filter Resync True",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Resync True": {
+      "main": [
+        [
+          {
+            "node": "Lock & Mark Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "bc056dbf-fdf3-4c91-9e75-9c9f69747a84",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
